@@ -1,0 +1,11 @@
+{
+  "name": "midna-webapp-spike",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "spike": "node run-spike.mjs"
+  },
+  "dependencies": {
+    "pyodide": "314.0.2"
+  }
+}

@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+/* Tailwind's `dark:` variant follows our data-theme override (light/dark
+   toggle + localStorage), not only the OS media query. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+:root {
+  --background: #f6f5f8;
+  --background-elevated: #ffffff;
+  --border-color: #e4e4e7;
+  --foreground: #18181b;
+  --foreground-muted: #71717a;
+  --accent: #7c3aed;
+  --accent-foreground: #ffffff;
+  --accent-soft: #ede9fe;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-background-elevated: var(--background-elevated);
+  --color-border: var(--border-color);
+  --color-foreground: var(--foreground);
+  --color-foreground-muted: var(--foreground-muted);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-soft: var(--accent-soft);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #19181d;
+    --background-elevated: #242229;
+    --border-color: #313036;
+    --foreground: #f4f4f5;
+    --foreground-muted: #a1a1aa;
+    --accent: #a78bfa;
+    --accent-foreground: #19181d;
+    --accent-soft: #322b52;
+  }
+}
+
+/* Explicit override always wins over the media query, in both directions. */
+:root[data-theme="light"] {
+  --background: #f6f5f8;
+  --background-elevated: #ffffff;
+  --border-color: #e4e4e7;
+  --foreground: #18181b;
+  --foreground-muted: #71717a;
+  --accent: #7c3aed;
+  --accent-foreground: #ffffff;
+  --accent-soft: #ede9fe;
+}
+
+:root[data-theme="dark"] {
+  --background: #19181d;
+  --background-elevated: #242229;
+  --border-color: #313036;
+  --foreground: #f4f4f5;
+  --foreground-muted: #a1a1aa;
+  --accent: #a78bfa;
+  --accent-foreground: #19181d;
+  --accent-soft: #322b52;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}

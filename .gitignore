@@ -1,0 +1,57 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# generated pyodide assets (regenerate with: npm run prepare:assets)
+/public/pyodide/
+/public/pyodide-worker.js
+
+# NOTE: public/py/core/ was previously listed here too, but neither
+# prepare-pyodide-assets.mjs nor build-worker.mjs actually regenerates it —
+# it's the real, hand-written source for the Rossmo/AOI/grid Python modules,
+# so it's tracked in git like any other source directory.
+
+# spike node_modules (not the app's dependency tree)
+/spike/node_modules/
+/spike/repro-result.json
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+.claude/
+test-results/
+

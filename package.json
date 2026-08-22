@@ -1,0 +1,52 @@
+{
+  "name": "midna-webapp",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "prepare:assets": "node scripts/prepare-pyodide-assets.mjs && node scripts/build-worker.mjs",
+    "predev": "npm run prepare:assets",
+    "prebuild": "npm run prepare:assets",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "test:golden": "node tests/golden/engine-equivalence.mjs"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.4.0",
+    "comlink": "^4.4.2",
+    "d3-contour": "^4.0.2",
+    "leaflet": "^1.9.4",
+    "next": "16.2.10",
+    "pyodide": "^314.0.2",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "react-hook-form": "^7.82.0",
+    "react-icons": "^5.7.0",
+    "react-leaflet": "^5.0.0",
+    "recharts": "^3.9.2",
+    "zod": "^4.4.3",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/d3-contour": "^3.0.6",
+    "@types/leaflet": "^1.9.21",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6.0.3",
+    "esbuild": "^0.28.1",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.10",
+    "jsdom": "^29.1.1",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "^4.1.10"
+  }
+}
