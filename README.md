@@ -326,8 +326,8 @@ The following instructions are only necessary for contributors who want to run o
 Clone the repository:
 
 ```bash
-git clone https://github.com/OWNER/REPOSITORY.git
-cd REPOSITORY
+git clone https://github.com/Geophie/midna.git
+cd midna
 ```
 
 Install dependencies:

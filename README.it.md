@@ -75,8 +75,8 @@ Questa sezione riguarda solo chi vuole contribuire al codice sorgente: per usare
 Requisiti: Node.js e npm.
 
 ```bash
-git clone https://github.com/OWNER/REPOSITORY.git
-cd REPOSITORY
+git clone https://github.com/Geophie/midna.git
+cd midna
 npm install
 npm run dev
 ```
