@@ -1,6 +1,6 @@
 <p align="center">
   <img src="public/midna-logo.png" alt="MIDNA logo" width="120">
-</p>s
+</p>
 
 <h1 align="center">MIDNA</h1>
 
