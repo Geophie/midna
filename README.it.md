@@ -1,6 +1,10 @@
-# MIDNA
+<p align="center">
+  <img src="public/midna-logo.png" alt="Logo MIDNA" width="120">
+</p>
 
-**M**apping **I**nterface for **D**etection, **N**arrowing and **A**nalysis
+<h1 align="center">MIDNA</h1>
+
+<p align="center"><strong>M</strong>apping <strong>I</strong>nterface for <strong>D</strong>etection, <strong>N</strong>arrowing and <strong>A</strong>nalysis</p>
 
 [English version](README.md)
 
@@ -18,6 +22,8 @@ L'applicazione è pensata per l'uso diretto online; non sono richiesti un'instal
 
 > L'URL pubblico sarà aggiunto dopo il deploy.
 
+L'applicazione include una **Guida** integrata (tab Guida) con la documentazione metodologica e operativa completa: scopo e limiti, procedura passo-passo, definizione dei parametri, interpretazione dei layer, metriche di output, legenda e note sull'interpretazione responsabile, bibliografia. Questo README riassume il workflow; la Guida in-app è il riferimento completo.
+
 ## Funzionalità
 
 1. Caricamento delle localizzazioni dei crimini da CSV.
@@ -27,9 +33,11 @@ L'applicazione è pensata per l'uso diretto online; non sono richiesti un'instal
 5. Integrazione opzionale di DEM, livelli di inclusione e di esclusione.
 6. Normalizzazione, classificazione e confronto del modello base con quello arricchito.
 7. Metriche analitiche: coefficiente di Gini, curva di Lorenz, hit score, area di ricerca.
-8. Visualizzazione su mappa interattiva ed esportazione in CSV o GeoPackage.
+8. Visualizzazione su mappa interattiva ed esportazione in CSV o GeoJSON.
 
 L'interfaccia include tema chiaro/scuro, italiano e inglese, log di esecuzione, indicatore di avanzamento e annullamento dell'analisi.
+
+La tab **Guida** documenta scopo e limiti, procedura d'uso, riferimento per ogni scheda, formula di Rossmo e coefficiente di Gini, legenda della heatmap e interpretazione responsabile, bibliografia.
 
 ## Dati e parametri
 
@@ -61,6 +69,8 @@ Il CRS influenza direttamente le distanze del modello. Il valore predefinito, `E
 L'interfaccia è costruita con [Next.js](https://nextjs.org/), React, Zustand e Leaflet. I moduli di analisi geospaziale Python, in `public/py/core`, vengono eseguiti da Pyodide in un Web Worker; la comunicazione con React usa [Comlink](https://github.com/GoogleChromeLabs/comlink). Le principali librerie geospaziali sono NumPy, GeoPandas, Rasterio, Shapely e PyProj.
 
 ## Sviluppo
+
+Questa sezione riguarda solo chi vuole contribuire al codice sorgente: per usare MIDNA non serve installare nulla, si usa l'applicazione web.
 
 Requisiti: Node.js e npm.
 

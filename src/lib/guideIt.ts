@@ -619,7 +619,7 @@ Russo, S. M., Bottini, G., Quattrociocchi, D., & Leitner, M. (2026). Enhancing R
 criminal geographic targeting model through environmental and land-use spatial layers: a
 case study of the Atlanta homicides (1979–1981). Crime Science, 15, Article 18.
 https://doi.org/10.1186/s40163-026-00278-w
-For further methodological background, validation details, and additional references, see
-Russo et al. (2026).
+Per ulteriori approfondimenti metodologici, dettagli di validazione e riferimenti aggiuntivi,
+si veda Russo et al. (2026).
 
 `;

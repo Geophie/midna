@@ -1,6 +1,10 @@
-# MIDNA
+<p align="center">
+  <img src="public/midna-logo.png" alt="MIDNA logo" width="120">
+</p>s
 
-**M**apping **I**nterface for **D**etection, **N**arrowing and **A**nalysis
+<h1 align="center">MIDNA</h1>
+
+<p align="center"><strong>M</strong>apping <strong>I</strong>nterface for <strong>D</strong>etection, <strong>N</strong>arrowing and <strong>A</strong>nalysis</p>
 
 [Versione italiana](README.it.md)
 
@@ -17,6 +21,8 @@ The complete analysis pipeline runs directly in the browser through [Pyodide](ht
 MIDNA is designed to be used directly through the hosted web application. No installation or local Python environment is required.
 
 > The public application URL will be added after deployment.
+
+The application includes a built-in **Guide** (Help tab) with the full methodological and operational documentation — purpose and limitations, step-by-step usage, parameter definitions, layer interpretation, output metrics, legend, responsible-interpretation notes, and references. This README summarizes the workflow; the in-app Guide is the authoritative reference.
 
 ---
 
@@ -41,7 +47,7 @@ MIDNA provides an interactive workflow for geographic profiling:
    - search area
 9. Compare baseline and enhanced models against a known anchor point when available.
 10. Visualize the results through an interactive map.
-11. Export analysis results as CSV or GeoPackage.
+11. Export analysis results as CSV or GeoJSON.
 
 ---
 
@@ -107,11 +113,11 @@ Available outputs include:
 - hit score percentage
 - search-area metrics
 - CSV export
-- GeoPackage export
+- GeoJSON export
 
 ### Help
 
-Integrated documentation provides additional information about the workflow, parameters, and available analysis options.
+The Guide tab documents: purpose and limitations, getting started, per-tab reference (Input, Parameters, Layers, Output), the Rossmo formula and Gini coefficient, heatmap legend and responsible interpretation, and the methodological references.
 
 ---
 
