@@ -6,7 +6,7 @@
 
 <p align="center"><strong>M</strong>apping <strong>I</strong>nterface for <strong>D</strong>etection, <strong>N</strong>arrowing and <strong>A</strong>nalysis</p>
 
-[Versione italiana](README.it.md)
+🇮🇹 [Versione italiana](README.it.md)
 
 A browser-based application for Criminal Geographic Targeting (CGT) using Rossmo's model, with optional environmental and land-use spatial layers.
 
