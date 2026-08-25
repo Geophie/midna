@@ -16,7 +16,7 @@ The complete analysis pipeline runs directly in the browser through [Pyodide](ht
 
 ## Use MIDNA
 
-**Web application:** [Open MIDNA](https://midna-eight.vercel.app/)
+**Web application:** [Open MIDNA](https://midnamap.vercel.app/)
 
 MIDNA is designed to be used directly through the hosted web application. No installation or local Python environment is required.
 
