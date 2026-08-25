@@ -6,7 +6,7 @@
 
 <p align="center"><strong>M</strong>apping <strong>I</strong>nterface for <strong>D</strong>etection, <strong>N</strong>arrowing and <strong>A</strong>nalysis</p>
 
-[English version](README.md)
+🇬🇧 [English version](README.md)
 
 Applicazione web per il *Criminal Geographic Targeting* (CGT) basato sul modello di Rossmo, con livelli spaziali ambientali e di uso del suolo opzionali.
 
