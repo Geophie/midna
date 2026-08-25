@@ -16,7 +16,7 @@ L'intera analisi viene eseguita nel browser tramite [Pyodide](https://pyodide.or
 
 ## Usa MIDNA
 
-**Applicazione web:** [Apri MIDNA](https://YOUR-VERCEL-URL)
+**Applicazione web:** [Apri MIDNA](https://midna-eight.vercel.app/)
 
 L'applicazione è pensata per l'uso diretto online; non sono richiesti un'installazione locale né un ambiente Python.
 
