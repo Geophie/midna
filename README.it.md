@@ -20,8 +20,6 @@ L'intera analisi viene eseguita nel browser tramite [Pyodide](https://pyodide.or
 
 L'applicazione è pensata per l'uso diretto online; non sono richiesti un'installazione locale né un ambiente Python.
 
-> L'URL pubblico sarà aggiunto dopo il deploy.
-
 L'applicazione include una **Guida** integrata (tab Guida) con la documentazione metodologica e operativa completa: scopo e limiti, procedura passo-passo, definizione dei parametri, interpretazione dei layer, metriche di output, legenda e note sull'interpretazione responsabile, bibliografia. Questo README riassume il workflow; la Guida in-app è il riferimento completo.
 
 ## Funzionalità
