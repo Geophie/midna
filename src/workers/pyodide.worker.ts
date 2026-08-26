@@ -10,7 +10,9 @@ interface PyProxy {
   get(name: string): PyProxy;
   copy(): PyProxy;
   destroy(): void;
-  toJs(options?: { dict_converter?: (entries: Iterable<[unknown, unknown]>) => unknown }): unknown;
+  toJs(options?: {
+    dict_converter?: (entries: Iterable<[unknown, unknown]>) => unknown;
+  }): unknown;
   (...args: unknown[]): Promise<PyProxy>;
   [attr: string]: unknown;
 }
@@ -46,15 +48,33 @@ let engineReadyPromise: Promise<PyodideEngine> | null = null;
 let cancelRequested = false;
 
 const PYODIDE_MODULE_URL = "/pyodide/pyodide.mjs";
+const PYODIDE_PACKAGE_BASE_URL = "https://cdn.jsdelivr.net/pyodide/v314.0.2/full/";
 
 async function initPyodide(): Promise<PyodideEngine> {
   const { loadPyodide } = (await import(
     /* webpackIgnore: true */
     /* turbopackIgnore: true */
     PYODIDE_MODULE_URL
-  )) as { loadPyodide: (options: { indexURL: string }) => Promise<PyodideInterface> };
-  const pyodide = await loadPyodide({ indexURL: "/pyodide/" });
-  await pyodide.loadPackage(["numpy", "pandas", "geopandas", "shapely", "rasterio", "fiona"]);
+  )) as {
+    loadPyodide: (options: {
+      indexURL: string;
+      packageBaseUrl: string;
+    }) => Promise<PyodideInterface>;
+  };
+
+  const pyodide = await loadPyodide({
+    indexURL: "/pyodide/",
+    packageBaseUrl: PYODIDE_PACKAGE_BASE_URL,
+  });
+
+  await pyodide.loadPackage([
+    "numpy",
+    "pandas",
+    "geopandas",
+    "shapely",
+    "rasterio",
+    "fiona",
+  ]);
 
   pyodide.FS.mkdirTree("/core");
   pyodide.FS.mkdirTree("/webcore");
@@ -63,7 +83,9 @@ async function initPyodide(): Promise<PyodideEngine> {
     const text = await fetch(`/py/core/${file}`).then((r) => r.text());
     pyodide.FS.writeFile(`/core/${file}`, text);
   }
-  const pipelineText = await fetch("/py/webcore/pipeline.py").then((r) => r.text());
+  const pipelineText = await fetch("/py/webcore/pipeline.py").then((r) =>
+    r.text(),
+  );
   pyodide.FS.writeFile("/webcore/pipeline.py", pipelineText);
 
   await pyodide.runPythonAsync(`
@@ -77,6 +99,8 @@ import pipeline
   // Looked up once and kept for the worker's lifetime — looking it up fresh
   // per call would mint a new PyProxy every run with nothing destroying it.
   const pipelineModule = pyodide.globals.get("pipeline");
+
+
   // .run is a borrowed attribute proxy: destroying pipelineModule would
   // auto-destroy it too, so copy() detaches an independent proxy first.
   const runFn = (pipelineModule.run as PyProxy).copy();
@@ -173,23 +197,23 @@ export interface LorenzCurve {
 
 export type RunOutcome =
   | {
-      status: "done";
-      b: number;
-      nCells: number;
-      cellsX: number | null;
-      cellsY: number | null;
-      nCrimes: number;
-      nCrimesTotal: number;
-      outliersRemoved: number;
-      baselineGini: number | null;
-      enhancedGini: number | null;
-      baselineLorenz: LorenzCurve;
-      enhancedLorenz: LorenzCurve | null;
-      baselineEval: EvalResult | null;
-      enhancedEval: EvalResult | null;
-      baselineGeoJson: string;
-      enhancedGeoJson: string | null;
-    }
+    status: "done";
+    b: number;
+    nCells: number;
+    cellsX: number | null;
+    cellsY: number | null;
+    nCrimes: number;
+    nCrimesTotal: number;
+    outliersRemoved: number;
+    baselineGini: number | null;
+    enhancedGini: number | null;
+    baselineLorenz: LorenzCurve;
+    enhancedLorenz: LorenzCurve | null;
+    baselineEval: EvalResult | null;
+    enhancedEval: EvalResult | null;
+    baselineGeoJson: string;
+    enhancedGeoJson: string | null;
+  }
   | { status: "cancelled" };
 
 export type ProgressCallback = (frac: number, stage: string) => void;
@@ -202,7 +226,9 @@ function layerExtension(fileName: string): string {
 const PRIMARY_EXTENSIONS = [".shp", ".geojson", ".json", ".zip"];
 
 function primaryEntry(files: VectorFileEntry[]): VectorFileEntry {
-  const primary = files.find((f) => PRIMARY_EXTENSIONS.includes(layerExtension(f.name).toLowerCase()));
+  const primary = files.find((f) =>
+    PRIMARY_EXTENSIONS.includes(layerExtension(f.name).toLowerCase()),
+  );
   return primary ?? files[0];
 }
 
@@ -215,7 +241,10 @@ const api = {
     cancelRequested = true;
   },
 
-  async runAnalysis(params: RunParams, onProgress: ProgressCallback): Promise<RunOutcome> {
+  async runAnalysis(
+    params: RunParams,
+    onProgress: ProgressCallback,
+  ): Promise<RunOutcome> {
     cancelRequested = false;
     const { pyodide, runFn } = await getEngine();
 
@@ -274,7 +303,8 @@ const api = {
     // Python side — so optional fields are omitted entirely when absent
     // (Python's dict.get() then returns the real None for a missing key)
     // instead of being set to `null`.
-    const manualAnchor = !anchorPath && params.anchorLat !== null && params.anchorLon !== null;
+    const manualAnchor =
+      !anchorPath && params.anchorLat !== null && params.anchorLon !== null;
 
     const pyParams = pyodide.toPy({
       crimes_csv_path: "/input_crimes.csv",
@@ -295,12 +325,17 @@ const api = {
       use_normalize: params.useNormalize,
       use_gini: params.useGini,
       ...(anchorPath ? { anchor_path: anchorPath } : {}),
-      ...(manualAnchor ? { anchor_lat: params.anchorLat, anchor_lon: params.anchorLon } : {}),
+      ...(manualAnchor
+        ? { anchor_lat: params.anchorLat, anchor_lon: params.anchorLon }
+        : {}),
       ...(gridPath ? { grid_path: gridPath } : {}),
       layers: pyLayers,
     });
 
-    const progressCb = async (frac: number, stage: string): Promise<boolean> => {
+    const progressCb = async (
+      frac: number,
+      stage: string,
+    ): Promise<boolean> => {
       onProgress(frac, stage);
       await new Promise((resolve) => setTimeout(resolve, 0));
       return cancelRequested;
@@ -314,23 +349,23 @@ const api = {
       }) as
         | { status: "cancelled" }
         | {
-            status: "done";
-            b: number;
-            n_cells: number;
-            cells_x: number | null;
-            cells_y: number | null;
-            n_crimes: number;
-            n_crimes_total: number;
-            outliers_removed: number;
-            baseline_gini: number | null;
-            enhanced_gini: number | null;
-            baseline_lorenz: LorenzCurve;
-            enhanced_lorenz: LorenzCurve | null;
-            baseline_eval: EvalResult | null;
-            enhanced_eval: EvalResult | null;
-            baseline_geojson: string;
-            enhanced_geojson: string | null;
-          };
+          status: "done";
+          b: number;
+          n_cells: number;
+          cells_x: number | null;
+          cells_y: number | null;
+          n_crimes: number;
+          n_crimes_total: number;
+          outliers_removed: number;
+          baseline_gini: number | null;
+          enhanced_gini: number | null;
+          baseline_lorenz: LorenzCurve;
+          enhanced_lorenz: LorenzCurve | null;
+          baseline_eval: EvalResult | null;
+          enhanced_eval: EvalResult | null;
+          baseline_geojson: string;
+          enhanced_geojson: string | null;
+        };
 
       if (result.status === "cancelled") {
         return { status: "cancelled" };
