@@ -17,6 +17,7 @@
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
     "@vercel/analytics": "^2.0.1",
+    "@vercel/speed-insights": "^2.0.0",
     "comlink": "^4.4.2",
     "d3-contour": "^4.0.2",
     "leaflet": "^1.9.4",
