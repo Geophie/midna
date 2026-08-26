@@ -20,7 +20,6 @@ The complete analysis pipeline runs directly in the browser through [Pyodide](ht
 
 MIDNA is designed to be used directly through the hosted web application. No installation or local Python environment is required.
 
-> The public application URL will be added after deployment.
 
 The application includes a built-in **Guide** (Help tab) with the full methodological and operational documentation — purpose and limitations, step-by-step usage, parameter definitions, layer interpretation, output metrics, legend, responsible-interpretation notes, and references. This README summarizes the workflow; the in-app Guide is the authoritative reference.
 
