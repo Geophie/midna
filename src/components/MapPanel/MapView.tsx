@@ -150,7 +150,7 @@ function HeatmapLayer({
       <>
         {contourBands.map((band) => (
           <GeoJSON
-            key={`contour-${activeView}-${band.bandIndex}-${band.threshold}`}
+            key={`contour-${activeView}-${threshold}-${band.bandIndex}-${band.threshold}`}
             data={band.geometry}
             pane={HEATMAP_PANE}
             style={{ fillColor: band.color, fillOpacity: 1, color: band.color, weight: 0 }}
