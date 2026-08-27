@@ -113,11 +113,6 @@ function HeatmapLayer({
 }) {
   const canvasRenderer = useMemo(() => L.canvas({ pane: HEATMAP_PANE, padding: 0.5 }), []);
   const scoreKey = scoreKeyForView(activeView);
-  // Coloring stays keyed off the score range of the FULL dataset (zero/masked
-  // cells excluded), so hiding below-threshold cells never re-scales the
-  // color bands of the ones left visible. Same classification as the legend
-  // and the contour layer (bandIndexForScore), so color means the same thing
-  // everywhere regardless of which layer is drawing it.
   const [minScore, maxScore] = useMemo(() => scoreRange(fc, scoreKey, true), [fc, scoreKey]);
   // Box-Cox λ auto-calibrated from this run's own score skew (see
   // estimateBandLambda) — same λ the legend and contour layer compute for
