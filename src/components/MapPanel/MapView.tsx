@@ -138,7 +138,7 @@ function HeatmapLayer({
         // masked out, etc.) — always hidden, independent of the threshold,
         // which otherwise governs everything above zero.
         const score = f.properties[scoreKey] ?? 0;
-        return score > 0 && score >= threshold;
+        return score >= threshold;
       }),
     [fc, scoreKey, threshold]
   );
