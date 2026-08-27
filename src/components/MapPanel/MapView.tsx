@@ -298,12 +298,13 @@ export function MapView({ activeView }: { activeView: HeatmapView }) {
   const showAnchor = layerVisibility.anchor && hasAnchor;
   const showGrid = layerVisibility.grid && !hasHeatmap && hasGrid;
   const showHeatmap = layerVisibility.heatmap && hasHeatmap;
+  const CARTO_API_KEY = process.env.NEXT_PUBLIC_CARTO_API_KEY;
 
   return (
     <div className="relative h-full w-full">
       <MapContainer center={DEFAULT_CENTER} zoom={DEFAULT_ZOOM} className="h-full w-full" attributionControl>
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key={CARTO_API_KEY}"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
         />
         <HeatmapPane opacity={heatmapOpacity} />
