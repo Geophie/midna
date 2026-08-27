@@ -81,7 +81,7 @@ function FitBounds({ latLngs }: { latLngs: [number, number][] }) {
   return null;
 }
 
-/** Keeps Leaflet's internal size in sync when the panel is manually resized (CSS `resize`). */
+/** Keeps Leaflet's internal size in sync when its container is resized. */
 function ResizeSync() {
   const map = useMap();
   useEffect(() => {

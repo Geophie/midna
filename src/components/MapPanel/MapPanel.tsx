@@ -24,7 +24,7 @@ export function MapPanel() {
   const activeView = heatmapView === "enhanced" && hasEnhanced ? "enhanced" : "baseline";
 
   return (
-    <div className="relative h-full max-h-full w-full max-w-full min-w-[360px] min-h-[320px] resize overflow-hidden bg-background-elevated">
+    <div className="relative h-full min-h-[320px] w-full overflow-hidden rounded-2xl border border-border bg-background-elevated shadow-sm">
       <MapView activeView={activeView} />
     </div>
   );
