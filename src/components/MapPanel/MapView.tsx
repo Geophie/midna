@@ -134,9 +134,6 @@ function HeatmapLayer({
   const visibleFeatures = useMemo(
     () =>
       fc.features.filter((f) => {
-        // A score of exactly 0 means "no signal for this cell" (outside AOI,
-        // masked out, etc.) — always hidden, independent of the threshold,
-        // which otherwise governs everything above zero.
         const score = f.properties[scoreKey] ?? 0;
         return score >= threshold;
       }),
