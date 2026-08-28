@@ -393,7 +393,7 @@ The application does not require a dedicated Python analysis server: the geograp
 
 | Contributor | Role | Contributions |
 | --- | --- | --- |
-| **Sofia Maria Russo** ([@Geophie](https://github.com/Geophie)) | Project Lead / Research | Original concept, research methodology, and authorship of the underlying scientific study |
+| **Sofia Maria Russo** ([@Geophie](https://github.com/Geophie)) | Project Lead / Research | Original concept, research methodology, and authorship of the underlying scientific study and original scripts |
 | **Giacomo Butera** ([@WhtNoiz](https://github.com/WhtNoiz)) | Developer | Web application development, including the React/Next.js frontend, Pyodide/Web Worker integration, client-side geoprocessing pipeline, interactive visualization, and data export |
 
 ---
