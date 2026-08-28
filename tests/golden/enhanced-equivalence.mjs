@@ -67,6 +67,8 @@ from rasterio.transform import from_origin
 from shapely.geometry import box
 
 import core.aoi as aoi
+import core.outliers as outliers
+import core.stats as stats
 import pipeline
 
 crimes_gdf = aoi.loadCrimesCsv("/enhanced_crimes.csv", latCol="Latitude", lonCol="Longitude")
@@ -75,7 +77,8 @@ crimes_gdf = gpd.GeoDataFrame(
     geometry=gpd.points_from_xy(crimes_gdf["Longitude"], crimes_gdf["Latitude"]),
     crs="EPSG:4326",
 )
-aoi_gdf = aoi.computeAoiFromGdf(crimes_gdf)
+fixture_crimes, _ = outliers.removeOutliers(crimes_gdf, thresholdMultiplier=1.5)
+aoi_gdf = aoi.computeAoiFromGdf(fixture_crimes)
 minx, miny, maxx, maxy = aoi_gdf.total_bounds
 
 width, height = 30, 30
@@ -118,7 +121,7 @@ base_params = {
     "b_auto": True,
     "b_value": 0,
     "use_outliers": True,
-    "outlier_threshold_multiplier": 2.5,
+    "outlier_threshold_multiplier": 1.5,
     "anchor_lat": 33.7500,
     "anchor_lon": -84.3850,
     "layers": [
@@ -133,7 +136,7 @@ base_params = {
         },
         {
             "type": "exclusion", "name": "excl", "path": "/enhanced_excl.geojson",
-            "intersectWeight": 0.1, "noIntersectWeight": 1.0,
+            "intersectWeight": 0.0, "noIntersectWeight": 1.0,
         },
     ],
 }
@@ -143,6 +146,16 @@ for engine in ("numpy", "loop"):
     params = dict(base_params, engine=engine)
     outcome = await pipeline.run(params, no_cancel)
     scored = gpd.GeoDataFrame.from_features(json.loads(outcome["enhanced_geojson"])["features"])
+    baseline = gpd.GeoDataFrame.from_features(json.loads(outcome["baseline_geojson"])["features"])
+    expected_gini = stats.computeGini(baseline["score_raw"].to_numpy())
+    ordered = scored.sort_values("rank")
+    boundary = baseline.sort_values("cell_id")["score_raw"].to_numpy().reshape(15, 15)
+    edge_mask = np.zeros(boundary.shape, dtype=bool)
+    edge_mask[[0, -1], :] = True
+    edge_mask[:, [0, -1]] = True
+    edge = boundary[edge_mask]
+    filtered, _ = outliers.removeOutliers(crimes_gdf, thresholdMultiplier=1.5)
+    expected_bounds = aoi.computeAoiFromGdf(filtered).total_bounds
     results[engine] = {
         "score_enhanced_sum": float(scored["score_enhanced"].sum()),
         "n_cells": outcome["n_cells"],
@@ -152,6 +165,23 @@ for engine in ("numpy", "loop"):
         "enhanced_gini": outcome["enhanced_gini"],
         "baseline_hit_score_pct": outcome["baseline_eval"]["hit_score_pct"] if outcome["baseline_eval"] else None,
         "enhanced_hit_score_pct": outcome["enhanced_eval"]["hit_score_pct"] if outcome["enhanced_eval"] else None,
+        "raw_min": float(baseline["score_raw"].min()),
+        "raw_max": float(baseline["score_raw"].max()),
+        "normalized_min": float(baseline["score"].min()),
+        "normalized_max": float(baseline["score"].max()),
+        "valid_baseline_zero_count": int((baseline["score"] == 0).sum()),
+        "zero_weight_count": int(scored["zero_weight_applied"].sum()),
+        "zero_weight_raw_zero_count": int((scored.loc[scored["zero_weight_applied"], "score_enhanced_raw"] == 0).sum()),
+        "ranks_follow_raw": bool(ordered["score_enhanced_raw"].is_monotonic_decreasing),
+        "gini_matches_raw": bool(abs(outcome["baseline_gini"] - expected_gini) < 1e-12),
+        "boundary_matches_raw": bool(
+            abs(outcome["boundary_diagnostics"]["peak_raw"] - boundary.max()) < 1e-12
+            and abs(outcome["boundary_diagnostics"]["edge_max_raw"] - edge.max()) < 1e-12
+            and abs(outcome["boundary_diagnostics"]["edge_mean_raw"] - edge.mean()) < 1e-12
+            and abs(outcome["boundary_diagnostics"]["edge_p95_raw"] - np.percentile(edge, 95)) < 1e-12
+            and abs(outcome["boundary_diagnostics"]["edge_peak_ratio"] - edge.max() / boundary.max()) < 1e-12
+        ),
+        "aoi_unchanged": bool(np.allclose(baseline.total_bounds, expected_bounds, rtol=0, atol=1e-12)),
     }
 
 json.dumps(results)
@@ -175,6 +205,39 @@ json.dumps(results)
     ok = false;
   } else {
     console.log(`ok: outlier removal ran (${results.numpy.outliers_removed} removed)`);
+  }
+
+  // Normalization is max-only (score / max * 100): a strictly positive raw
+  // score must stay strictly positive — normalization never manufactures a
+  // zero, so it cannot be mistaken for a zero-weighted cell.
+  const expectedNormMin =
+    (results.numpy.raw_min / results.numpy.raw_max) * 100;
+  if (
+    !(
+      results.numpy.raw_min > 0 &&
+      results.numpy.normalized_min > 0 &&
+      Math.abs(results.numpy.normalized_min - expectedNormMin) < 1e-9 &&
+      Math.abs(results.numpy.normalized_max - 100) < 1e-9
+    )
+  ) {
+    console.error("FAIL: baseline max-only normalization did not preserve a positive minimum");
+    ok = false;
+  }
+  // Zero provenance stays unambiguous: the only zeros on the normalized
+  // baseline are cells whose raw score was already zero, and every
+  // zero-weighted enhanced cell has a raw enhanced score of zero.
+  if (!(results.numpy.valid_baseline_zero_count === 0 && results.numpy.zero_weight_count > 0 &&
+        results.numpy.zero_weight_raw_zero_count === results.numpy.zero_weight_count)) {
+    console.error("FAIL: normalized-zero and zero-weight provenance are not distinguishable");
+    ok = false;
+  }
+  if (!results.numpy.ranks_follow_raw || !results.numpy.gini_matches_raw) {
+    console.error("FAIL: ranking or Gini changed from its raw-score basis");
+    ok = false;
+  }
+  if (!results.numpy.boundary_matches_raw || !results.numpy.aoi_unchanged) {
+    console.error("FAIL: boundary diagnostics or automatic AOI bounds changed");
+    ok = false;
   }
 
   if (results.numpy.baseline_hit_score_pct === null || results.numpy.enhanced_hit_score_pct === null) {

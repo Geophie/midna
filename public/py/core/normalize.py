@@ -3,7 +3,13 @@ import geopandas as gpd
 def normalizeScores(gridGdf: gpd.GeoDataFrame, col: str = "score") -> gpd.GeoDataFrame:
 
     """
-    Normalizes a score column to the range [0, 100] using min-max scaling.
+    Normalizes a score column to the range [0, 100] using max-only scaling,
+    matching the scientific comparison script:
+
+        normalized = score / max(score) * 100
+
+    The minimum is NOT subtracted, so a raw minimum > 0 stays > 0. The *100
+    factor only preserves MIDNA's [0, 100] UI scale.
 
     Parameters:
         gridGdf : GeoDataFrame with a score column
@@ -19,9 +25,9 @@ def normalizeScores(gridGdf: gpd.GeoDataFrame, col: str = "score") -> gpd.GeoDat
     if not np.isfinite(values).all():
         values = values.where(np.isfinite(values), other=0.0)
         result[col] = values
-    vmin, vmax = values.min(), values.max()
-    if vmax == vmin:
+    vmax = values.max()
+    if vmax <= 0:
         result[col] = 0.0
     else:
-        result[col] = (values - vmin) / (vmax - vmin) * 100
+        result[col] = values / vmax * 100
     return result

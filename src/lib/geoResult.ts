@@ -2,7 +2,11 @@ export interface GridFeatureProps {
   cell_id: number;
   rank: number;
   score: number;
+  score_raw?: number;
   score_enhanced?: number;
+  score_enhanced_raw?: number;
+  effective_weight?: number;
+  zero_weight_applied?: boolean;
   Longitude: number;
   Latitude: number;
   crime_count?: number;
@@ -21,6 +25,21 @@ export type HeatmapView = "baseline" | "enhanced";
 
 export function scoreKeyForView(view: HeatmapView): "score" | "score_enhanced" {
   return view === "enhanced" ? "score_enhanced" : "score";
+}
+
+export function isSurfaceFeature(
+  feature: GridFeature,
+  key: "score" | "score_enhanced"
+): boolean {
+  return key === "score" || feature.properties.zero_weight_applied !== true;
+}
+
+export function isFeatureVisible(
+  feature: GridFeature,
+  key: "score" | "score_enhanced",
+  threshold: number
+): boolean {
+  return isSurfaceFeature(feature, key) && (feature.properties[key] ?? 0) >= threshold;
 }
 
 export const HEATMAP_BAND_COUNT = 21;
@@ -71,9 +90,9 @@ function boxCox(x: number, lambda: number): number {
 
 /** Auto-calibrates the Box-Cox λ used by `bandThreshold`/`bandIndexForScore`
  * from the current run's own score distribution — no manual parameter, no
- * per-f/g-value tuning. Uses the same zero-excluded population `scoreRange`
- * does (a cell with score exactly 0 means "no signal," already excluded from
- * range/classification elsewhere — reusing that scope here avoids adding a
+ * per-f/g-value tuning. Uses the same provenance-filtered population
+ * `scoreRange` does, so a valid normalized minimum remains classified while
+ * an explicitly zero-weighted enhanced cell does not — avoiding a
  * *third*, differently-scoped statistic alongside the mean/stdev
  * `computeLegendBands` computes over all cells for the Z-score). Maps the
  * Fisher-Pearson skewness coefficient (0 for a symmetric distribution, large
@@ -81,7 +100,9 @@ function boxCox(x: number, lambda: number): number {
  * (behaves like the original linear scheme); heavy skew → λ near 0 (behaves
  * like the log scheme introduced for extreme f/g exponents). */
 export function estimateBandLambda(fc: GridFeatureCollection, key: "score" | "score_enhanced"): number {
-  const scores = fc.features.map((f) => f.properties[key] ?? 0).filter((v) => v !== 0);
+  const scores = fc.features
+    .filter((f) => isSurfaceFeature(f, key))
+    .map((f) => f.properties[key] ?? 0);
   const n = scores.length;
   if (n === 0) return 1;
 
@@ -188,7 +209,8 @@ export function computeLegendBands(
   key: "score" | "score_enhanced",
   numBands = HEATMAP_BAND_COUNT
 ): LegendBand[] {
-  const scores = fc.features.map((f) => f.properties[key] ?? 0);
+  const features = fc.features.filter((f) => isSurfaceFeature(f, key));
+  const scores = features.map((f) => f.properties[key] ?? 0);
   const totalCells = scores.length;
   if (totalCells === 0) return [];
 
@@ -196,7 +218,7 @@ export function computeLegendBands(
   const variance = scores.reduce((sum, v) => sum + (v - mean) ** 2, 0) / totalCells;
   const stdev = Math.sqrt(variance);
 
-  const [minScore, maxScore] = scoreRange(fc, key, true);
+  const [minScore, maxScore] = scoreRange(fc, key);
   const lambda = estimateBandLambda(fc, key);
 
   const thresholds = Array.from({ length: numBands }, (_, i) =>
@@ -210,7 +232,7 @@ export function computeLegendBands(
   for (let i = 0; i < numBands; i++) {
     const threshold = thresholds[i];
     let capturedCells = 0;
-    for (const f of fc.features) {
+    for (const f of features) {
       if ((f.properties[key] ?? 0) >= threshold) capturedCells += 1;
     }
     bands.push({
@@ -231,20 +253,19 @@ export function parseGridFeatureCollection(geoJson: string): GridFeatureCollecti
 
 /** Min/max of a score field across all features — used to bound the threshold
  * slider when scores aren't normalized (and so have no fixed 0–100 range), and
- * to anchor the equal-interval color bands. `excludeZero` skips cells with a
- * score of exactly 0 ("no signal" — outside AOI, masked out, etc.), so those
- * don't drag the minimum down and compress every real cell into one band. */
+ * to anchor the equal-interval color bands. Enhanced cells with an explicitly
+ * recorded zero environmental weight are outside the rendered analytical
+ * surface; numeric zero alone remains a valid normalized minimum. */
 export function scoreRange(
   fc: GridFeatureCollection,
-  key: "score" | "score_enhanced",
-  excludeZero = false
+  key: "score" | "score_enhanced"
 ): [number, number] {
   let min = Infinity;
   let max = -Infinity;
   for (const f of fc.features) {
+    if (!isSurfaceFeature(f, key)) continue;
     const v = f.properties[key];
     if (v === undefined) continue;
-    if (excludeZero && v === 0) continue;
     if (v < min) min = v;
     if (v > max) max = v;
   }

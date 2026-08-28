@@ -8,11 +8,13 @@ import { IoIosHome } from "react-icons/io";
 import { MapContainer, TileLayer, GeoJSON, CircleMarker, Marker, useMap } from "react-leaflet";
 import { useAppStore } from "@/lib/store";
 import { parseCrimePoints, parseAnchorPoint, parseGridOutline, type LatLon } from "@/lib/mapPoints";
+import { crsIsKnown, isWgs84 } from "@/lib/crsProject";
 import {
   parseGridFeatureCollection,
   bandColor,
   computeLegendBands,
   estimateBandLambda,
+  isFeatureVisible,
   scoreKeyForView,
   scoreRange,
   type GridFeatureCollection,
@@ -113,7 +115,7 @@ function HeatmapLayer({
 }) {
   const canvasRenderer = useMemo(() => L.canvas({ pane: HEATMAP_PANE, padding: 0.5 }), []);
   const scoreKey = scoreKeyForView(activeView);
-  const [minScore, maxScore] = useMemo(() => scoreRange(fc, scoreKey, true), [fc, scoreKey]);
+  const [minScore, maxScore] = useMemo(() => scoreRange(fc, scoreKey), [fc, scoreKey]);
   // Box-Cox λ auto-calibrated from this run's own score skew (see
   // estimateBandLambda) — same λ the legend and contour layer compute for
   // this fc/scoreKey, so a cell's color means the same thing everywhere.
@@ -129,8 +131,7 @@ function HeatmapLayer({
   const visibleFeatures = useMemo(
     () =>
       fc.features.filter((f) => {
-        const score = f.properties[scoreKey] ?? 0;
-        return score >= threshold;
+        return isFeatureVisible(f, scoreKey, threshold);
       }),
     [fc, scoreKey, threshold]
   );
@@ -258,8 +259,8 @@ export function MapView({ activeView }: { activeView: HeatmapView }) {
   );
 
   const crimePoints: LatLon[] = useMemo(
-    () => (csvText ? parseCrimePoints(csvText, params.latCol, params.lonCol) : []),
-    [csvText, params.latCol, params.lonCol]
+    () => (csvText ? parseCrimePoints(csvText, params.latCol, params.lonCol, params.inputCrs) : []),
+    [csvText, params.latCol, params.lonCol, params.inputCrs]
   );
 
   const anchorPoint: LatLon | null = useMemo(() => {
@@ -269,8 +270,8 @@ export function MapView({ activeView }: { activeView: HeatmapView }) {
         : null;
     }
     if (!anchorFileName || !anchorFileBytes) return null;
-    return parseAnchorPoint(anchorFileName, anchorFileBytes, params.latCol, params.lonCol);
-  }, [params.anchorMode, params.anchorLat, params.anchorLon, anchorFileName, anchorFileBytes, params.latCol, params.lonCol]);
+    return parseAnchorPoint(anchorFileName, anchorFileBytes, params.latCol, params.lonCol, params.inputCrs);
+  }, [params.anchorMode, params.anchorLat, params.anchorLon, anchorFileName, anchorFileBytes, params.latCol, params.lonCol, params.inputCrs]);
 
   const gridOutline = useMemo(() => (gridFileBytes ? parseGridOutline(gridFileBytes) : null), [gridFileBytes]);
 
@@ -285,6 +286,11 @@ export function MapView({ activeView }: { activeView: HeatmapView }) {
   const hasCrimes = crimePoints.length > 0;
   const hasAnchor = anchorPoint !== null;
   const hasGrid = gridOutline !== null;
+
+  // Non-WGS84 CSV whose CRS proj4 can't resolve → crime/anchor markers can't be
+  // placed. The heatmap still renders correctly after Run (pyproj handles it).
+  const crimePreviewUnavailable =
+    Boolean(csvText) && !isWgs84(params.inputCrs) && !crsIsKnown(params.inputCrs);
 
   const showCrimes = layerVisibility.crimes && hasCrimes;
   const showAnchor = layerVisibility.anchor && hasAnchor;
@@ -319,6 +325,14 @@ export function MapView({ activeView }: { activeView: HeatmapView }) {
         {showAnchor && anchorPoint && <Marker position={[anchorPoint.lat, anchorPoint.lon]} icon={ANCHOR_ICON} />}
         <FitBounds latLngs={fitPoints} />
       </MapContainer>
+
+      {crimePreviewUnavailable && (
+        <div className="pointer-events-none absolute top-3 left-3 z-[1000] max-w-xs">
+          <FloatingCard className="text-foreground-muted">
+            {t("map_preview_crs_unknown", { crs: params.inputCrs || "—" })}
+          </FloatingCard>
+        </div>
+      )}
 
       {/* Floating overlay controls — the map fills the whole panel edge-to-edge behind these. */}
       <div className="pointer-events-none absolute top-3 right-3 z-[1000] flex flex-col items-end gap-2">

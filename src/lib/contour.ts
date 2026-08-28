@@ -5,6 +5,7 @@ import {
   bandThreshold,
   colorForBandIndex,
   estimateBandLambda,
+  isSurfaceFeature,
   scoreRange,
   type GridFeatureCollection,
 } from "@/lib/geoResult";
@@ -64,6 +65,12 @@ function bandLowerEdge(
   return bandThreshold(index + 1, minScore, maxScore, lambda, numBands);
 }
 
+function contourThreshold(threshold: number, minScore: number, maxScore: number): number {
+  return threshold === minScore
+    ? minScore - Math.max(Number.EPSILON, Math.abs(maxScore - minScore) * 1e-12)
+    : threshold;
+}
+
 function transformGeometry(
   geometry: GeoJSON.MultiPolygon,
   bounds: [number, number, number, number],
@@ -94,15 +101,14 @@ function prepareContours(
   const cached = cache.get(fc)?.get(key);
   if (cached) return cached;
 
-  const [minScore, maxScore] = scoreRange(fc, scoreKey, true);
+  const [minScore, maxScore] = scoreRange(fc, scoreKey);
   if (maxScore <= minScore) return null;
   const lambda = estimateBandLambda(fc, scoreKey);
 
   const sorted = [...fc.features].sort((a, b) => a.properties.cell_id - b.properties.cell_id);
   const sentinel = minScore - Math.max(1, Math.abs(maxScore - minScore));
   const values = sorted.map((feature) => {
-    const score = feature.properties[scoreKey] ?? 0;
-    return score === 0 ? sentinel : score;
+    return isSurfaceFeature(feature, scoreKey) ? (feature.properties[scoreKey] ?? 0) : sentinel;
   });
   const bandCounts = Array(numBands).fill(0) as number[];
   for (const score of values) {
@@ -115,7 +121,12 @@ function prepareContours(
   const naturalBands = bandCounts.map((count, bandIndex): ContourBand | null => {
     if (count === 0) return null;
     const threshold = bandLowerEdge(bandIndex, minScore, maxScore, lambda, numBands);
-    const geometry = transformGeometry(generator.contour(values, threshold), bounds, cellsX, cellsY);
+    const geometry = transformGeometry(
+      generator.contour(values, contourThreshold(threshold, minScore, maxScore)),
+      bounds,
+      cellsX,
+      cellsY
+    );
     if (geometry.coordinates.length === 0) return null;
     return { bandIndex, color: colorForBandIndex(bandIndex), threshold, geometry };
   });
@@ -151,7 +162,12 @@ export function computeContourBands(
     } else {
       const natural = naturalBands[outerBandIndex];
       if (natural) {
-        const geometry = transformGeometry(generator.contour(values, threshold), bounds, cellsX, cellsY);
+        const geometry = transformGeometry(
+          generator.contour(values, contourThreshold(threshold, minScore, maxScore)),
+          bounds,
+          cellsX,
+          cellsY
+        );
         if (geometry.coordinates.length > 0) result.push({ ...natural, threshold, geometry });
       }
     }

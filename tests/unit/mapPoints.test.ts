@@ -22,8 +22,33 @@ describe("parseCrimePoints", () => {
     expect(parseCrimePoints(csv, "Latitude", "Longitude")).toEqual([]);
   });
 
+  it("reads coordinate headers case-insensitively", () => {
+    const csv = "latitude,LONGITUDE\n33.75,-84.39\n";
+    expect(parseCrimePoints(csv, "Latitude", "Longitude")).toEqual([{ lat: 33.75, lon: -84.39 }]);
+  });
+
   it("returns empty for a header-only file", () => {
     expect(parseCrimePoints("Latitude,Longitude\n", "Latitude", "Longitude")).toEqual([]);
+  });
+
+  it("defaults to WGS84 and leaves lon/lat untouched", () => {
+    const csv = "Latitude,Longitude\n33.755,-84.39\n";
+    expect(parseCrimePoints(csv, "Latitude", "Longitude", "EPSG:4326")).toEqual([
+      { lat: 33.755, lon: -84.39 },
+    ]);
+  });
+
+  it("reprojects a projected-CRS CSV (WGS84 UTM 16N) to lon/lat", () => {
+    // "Latitude"/"Longitude" columns hold northing/easting for a projected CRS.
+    const csv = "Latitude,Longitude\n3738052.17,741749.84\n";
+    const [p] = parseCrimePoints(csv, "Latitude", "Longitude", "EPSG:32616");
+    expect(p.lon).toBeCloseTo(-84.39, 4);
+    expect(p.lat).toBeCloseTo(33.755, 4);
+  });
+
+  it("drops rows when the CRS cannot be resolved", () => {
+    const csv = "Latitude,Longitude\n3738052.17,741749.84\n";
+    expect(parseCrimePoints(csv, "Latitude", "Longitude", "EPSG:99999")).toEqual([]);
   });
 });
 

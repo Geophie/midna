@@ -46,6 +46,9 @@ export interface AnalysisParams {
   analysisCrs: string;
   cellsX: number;
   cellsY: number;
+  // Outer bounding-box padding as a percentage per side.
+  // Ignored when a custom grid is loaded.
+  aoiPaddingPct: number;
   f: number;
   g: number;
   k: number;
@@ -68,6 +71,7 @@ export const DEFAULT_PARAMS: AnalysisParams = {
   analysisCrs: "EPSG:4326",
   cellsX: 200,
   cellsY: 200,
+  aoiPaddingPct: 10,
   f: 1.2,
   g: 1.2,
   k: 1.0,
@@ -198,15 +202,14 @@ export const useAppStore = create<AppState>((set) => ({
   appendLog: (stage, frac) =>
     set((s) => ({ logEntries: [...s.logEntries, { stage, frac, t: Date.now() }] })),
   setResult: (result, analysisCrs) =>
-    set((state) => ({
+    set({
       result,
       resultAnalysisCrs: analysisCrs,
       status: "done",
       progressFrac: 1,
       activeTab: "output",
-      contouringEnabled:
-        result.cellsX !== null && result.cellsY !== null ? state.contouringEnabled : false,
-    })),
+      contouringEnabled: result.cellsX !== null && result.cellsY !== null,
+    }),
   setCancelled: () => set({ status: "cancelled" }),
   setError: (errorMessage) => set({ errorMessage, status: "error" }),
   setMapPanelVisible: (mapPanelVisible) => set({ mapPanelVisible }),

@@ -59,6 +59,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     // Errors (shared across the whole app — worker/validation error codes)
     error_file_empty: "Il file è vuoto.",
     error_csv_columns: "Colonne latitudine/longitudine non trovate nell'header.",
+    error_csv_columns_ambiguous: "Le colonne latitudine/longitudine richieste sono ambigue nell'header.",
     error_col_invalid_values: "Valori non numerici o mancanti in latitudine/longitudine.",
     error_col_not_numeric: "La colonna deve contenere valori numerici.",
     error_too_few_crimes: "Servono almeno 2 punti reato.",
@@ -84,6 +85,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     crs_output: "CRS di analisi (output)",
     param_cells_x: "Celle X",
     param_cells_y: "Celle Y",
+    param_aoi_padding: "Padding bounding box esterna (% per lato)",
     cells_from_custom_grid_suffix: "(da reticolo personalizzato)",
     param_f: "f (decadimento fuori buffer)",
     param_g: "g (decadimento dentro buffer)",
@@ -93,7 +95,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     outlier_removal: "Rimozione outlier spaziali",
     contouring_label: "Contorni heatmap",
     outlier_threshold_label: "Soglia outlier (k in μ+k·σ)",
-    normalize: "Normalizza score [0–100]",
+    normalize: "Scala gli score (massimo = 100)",
     calc_gini: "Calcola coefficiente di Gini",
 
     // Layers tab
@@ -183,7 +185,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     help_workflow_2:
       "2. (Facoltativo) Carica un anchor point — da file (predefinito) o inserito manualmente — solo per confrontare il risultato con la posizione realmente nota: non è necessario per eseguire l'analisi.",
     help_workflow_3:
-      "3. Configura i parametri nella scheda Parametri: motore di calcolo, rimozione outlier, dimensione griglia e costanti della formula di Rossmo (f, g, k, B).",
+      "3. Configura i parametri nella scheda Parametri: motore di calcolo, rimozione outlier, dimensione griglia, padding della bounding box e costanti della formula di Rossmo (f, g, k, B).",
     help_workflow_4:
       "4. (Facoltativo) Aggiungi layer di peso nella scheda Layers — DEM, aree da includere o escludere — per raffinare la superficie di probabilità.",
     help_workflow_5: '5. Premi "Esegui analisi" e segui l\'avanzamento nella barra di stato.',
@@ -198,7 +200,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     help_params_1:
       "Il motore di calcolo Numpy è più veloce ed è quello raccomandato; il motore a loop Python è la versione di riferimento, più lenta, utile per verifica. I nomi delle colonne di latitudine e longitudine devono corrispondere esattamente, incluse maiuscole e minuscole, alle intestazioni del CSV dei crimini. Il CRS di input è il sistema di riferimento delle coordinate presenti nel CSV (di norma EPSG:4326, gradi decimali), mentre il CRS di analisi è il sistema usato per tutti i calcoli di distanza. La rimozione degli outlier individua i crimini troppo lontani dagli altri (soglia HubDist = media + k×deviazione standard) e li esclude sia dal calcolo dell'area di studio (AOI) e della griglia, restringendola attorno al nucleo dei crimini, sia dal calcolo della formula di Rossmo — se B è impostato su 'Auto', anche il suo calcolo automatico si basa sui soli crimini rimasti dopo la rimozione outlier. Se carichi un reticolo personalizzato, la rimozione outlier continua ad agire sui crimini usati dalla formula di Rossmo ma non ridefinisce più l'estensione della griglia.",
     help_params_2:
-      "La griglia definisce il numero di celle in cui viene suddivisa l'area (più celle = maggiore risoluzione ma calcolo più lento; disabilitata se è stato caricato un reticolo personalizzato). I parametri f, g e k della formula di Rossmo si impostano qui; B può essere calcolato automaticamente dai dati oppure inserito manualmente. Puoi anche disattivare la normalizzazione dello score [0–100] e/o il calcolo del coefficiente di Gini.",
+      "La griglia definisce il numero di celle in cui viene suddivisa l'area (più celle = maggiore risoluzione ma calcolo più lento; disabilitata se è stato caricato un reticolo personalizzato). Il campo Padding bounding box aggiunge un margine percentuale per lato attorno all'area di studio generata automaticamente, così la griglia non termina esattamente sul crimine più esterno (default 10%; ignorato con reticolo personalizzato). I parametri f, g e k della formula di Rossmo si impostano qui; B può essere calcolato automaticamente dai dati oppure inserito manualmente. Puoi anche disattivare la normalizzazione dello score [0–100] e/o il calcolo del coefficiente di Gini.",
     help_layers_title: "Scheda Layers",
     help_layers_1:
       "I layer aggiuntivi modificano la superficie di probabilità moltiplicando lo score di ogni cella per un peso. Un layer DEM (elevazione) assegna pesi diversi in base a tre fasce di altitudine (pianura 0–220 m, collina 220–350 m, montagna oltre 350 m) più un peso per le celle senza dato. I layer di inclusione/esclusione sono poligoni (es. parchi, quartieri residenziali, cimiteri): assegnano un peso alle celle che intersecano la geometria e un peso diverso a quelle che non la intersecano — usali per escludere zone improbabili (es. laghi, aree industriali) o per includere solo zone plausibili (es. aree residenziali). Ogni layer può essere disattivato temporaneamente senza rimuoverlo, tramite la casella di spunta sulla sua scheda.",
@@ -232,6 +234,8 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
 
     // Map panel
     map_loading: "Caricamento mappa…",
+    map_preview_crs_unknown:
+      "Anteprima crimini non disponibile: CRS di input \"{crs}\" non riconosciuto.",
     heatmap_opacity_label: "Opacità heatmap",
     score_threshold_label: "Soglia score: {value}",
     layer_toggle_crimes: "Crimini",
@@ -301,6 +305,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     crs_output: "Analysis CRS (output)",
     param_cells_x: "Cells X",
     param_cells_y: "Cells Y",
+    param_aoi_padding: "Outer bounding-box padding (% per side)",
     cells_from_custom_grid_suffix: "(from custom grid)",
     param_f: "f (decay outside buffer)",
     param_g: "g (decay inside buffer)",
@@ -310,7 +315,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     outlier_removal: "Spatial outlier removal",
     contouring_label: "Heatmap contours",
     outlier_threshold_label: "Outlier threshold (k in μ+k·σ)",
-    normalize: "Normalize scores [0–100]",
+    normalize: "Scale scores (maximum = 100)",
     calc_gini: "Compute Gini coefficient",
 
     // Layers tab
@@ -399,7 +404,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     help_workflow_2:
       "2. (Optional) Load an anchor point — from a file (default) or entered manually — only to compare the result against the known real location: it is not required to run the analysis.",
     help_workflow_3:
-      "3. Configure the parameters in the Parameters tab: compute engine, outlier removal, grid size and Rossmo formula constants (f, g, k, B).",
+      "3. Configure the parameters in the Parameters tab: compute engine, outlier removal, grid size, bounding-box padding and Rossmo formula constants (f, g, k, B).",
     help_workflow_4:
       "4. (Optional) Add weight layers in the Layers tab — DEM, areas to include or exclude — to refine the probability surface.",
     help_workflow_5: '5. Press "Run analysis" and follow progress in the status bar.',
@@ -414,7 +419,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     help_params_1:
       "The Numpy compute engine is faster and recommended; the Python loop engine is the slower reference implementation, useful for verification. The latitude and longitude column names must exactly match the crimes CSV headers, including letter case. The input CRS is the coordinate reference system of the coordinates in the CSV (usually EPSG:4326, decimal degrees), while the analysis CRS is the system used for all distance calculations. Outlier removal identifies crimes that are too far from the others (HubDist threshold = mean + k×standard deviation) and excludes them both from the area-of-interest (AOI) and grid extent calculation, shrinking it around the core cluster of crimes, and from the Rossmo formula computation itself — when B is set to 'Auto', its automatic computation is also based only on the crimes remaining after outlier removal. If you load a custom grid, outlier removal still affects the crimes used by the Rossmo formula but no longer redefines the grid's extent.",
     help_params_2:
-      "The grid defines how many cells the area is divided into (more cells = higher resolution but slower computation; disabled if a custom grid has been loaded). The f, g and k parameters of the Rossmo formula are set here; B can be computed automatically from the data or entered manually. You can also turn off score normalization [0–100] and/or the Gini coefficient computation.",
+      "The grid defines how many cells the area is divided into (more cells = higher resolution but slower computation; disabled if a custom grid has been loaded). The Outer bounding-box padding field adds a percentage margin per side around the automatically generated area of interest, so the grid does not end exactly on the outermost crime (default 10%; ignored with a custom grid). The f, g and k parameters of the Rossmo formula are set here; B can be computed automatically from the data or entered manually. You can also turn off score normalization [0–100] and/or the Gini coefficient computation.",
     help_layers_title: "Layers tab",
     help_layers_1:
       "Additional layers modify the probability surface by multiplying each cell's score by a weight. A DEM (elevation) layer assigns different weights based on three altitude bands (flatland 0–220 m, hillside 220–350 m, mountain above 350 m) plus a weight for cells with no data. Inclusion/exclusion layers are polygons (e.g. parks, residential neighborhoods, cemeteries): they assign one weight to cells that intersect the geometry and a different weight to those that don't — use them to exclude unlikely areas (e.g. lakes, industrial zones) or to include only plausible ones (e.g. residential areas). Each layer can be temporarily disabled without removing it, via the checkbox on its card.",
@@ -448,6 +453,8 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
 
     // Map panel
     map_loading: "Loading map…",
+    map_preview_crs_unknown:
+      "Crime preview unavailable — input CRS \"{crs}\" not recognized.",
     heatmap_opacity_label: "Heatmap opacity",
     score_threshold_label: "Score threshold: {value}",
     layer_toggle_crimes: "Crimes",
@@ -465,6 +472,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
 
     error_file_empty: "The file is empty.",
     error_csv_columns: "Latitude/longitude columns not found in the header.",
+    error_csv_columns_ambiguous: "The requested latitude/longitude columns are ambiguous in the header.",
     error_col_invalid_values: "Non-numeric or missing values in latitude/longitude.",
     error_col_not_numeric: "The column must contain numeric values.",
     error_too_few_crimes: "At least 2 crime points are required.",

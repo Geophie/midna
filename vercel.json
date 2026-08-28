@@ -1,4 +1,11 @@
 {
+  "redirects": [
+    {
+      "source": "/((?!_next/|.*\\.)[^/].*)",
+      "destination": "/",
+      "permanent": false
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",

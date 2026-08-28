@@ -8,6 +8,8 @@ export const paramsSchema = z
     analysisCrs: z.string().min(1, "error_invalid_crs"),
     cellsX: z.number().int().positive("error_grid_cells_positive"),
     cellsY: z.number().int().positive("error_grid_cells_positive"),
+    // AOI padding control (percentage per side).
+    aoiPaddingPct: z.number().min(0, "error_grid_cells_positive").max(500, "error_grid_cells_positive"),
     f: z.number().positive("error_rossmo_params"),
     g: z.number().positive("error_rossmo_params"),
     k: z.number().positive("error_rossmo_params"),

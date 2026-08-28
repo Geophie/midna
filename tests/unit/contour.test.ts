@@ -8,13 +8,21 @@ import {
   type GridFeatureCollection,
 } from "@/lib/geoResult";
 
-function grid(scores: number[], cellsX: number, cellSize = 10): GridFeatureCollection {
+function grid(scores: number[], cellsX: number, cellSize = 10, zeroWeighted: boolean[] = []): GridFeatureCollection {
   return {
     features: scores.map((score, cell_id) => {
       const x = cell_id % cellsX;
       const y = Math.floor(cell_id / cellsX);
       return {
-        properties: { cell_id, rank: cell_id + 1, score, Longitude: x, Latitude: y },
+        properties: {
+          cell_id,
+          rank: cell_id + 1,
+          score,
+          score_enhanced: score,
+          zero_weight_applied: zeroWeighted[cell_id] ?? false,
+          Longitude: x,
+          Latitude: y,
+        },
         geometry: {
           type: "Polygon",
           coordinates: [[
@@ -47,20 +55,25 @@ function contains(geometry: GeoJSON.MultiPolygon, point: [number, number]): bool
 }
 
 describe("computeContourBands", () => {
-  it("layers lower-edge contours with the same colors as bandIndexForScore and masks zero", () => {
-    const scores = [0, 10, 20, 30, 40, ...Array(19).fill(5), 45];
-    const fc = grid(scores, 5);
-    const bands = computeContourBands(fc, "score", 5, 5, 0, 4);
-    const lambda = estimateBandLambda(fc, "score");
+  it("layers valid normalized zero and masks only explicit zero-weighted cells", () => {
+    const scores = [10, 10, 20, 30, 40, 10, 0, 0, 10, 10, ...Array(14).fill(5), 45];
+    const zeroWeighted = scores.map((_, i) => i === 7);
+    const fc = grid(scores, 5, 10, zeroWeighted);
+    const bands = computeContourBands(fc, "score_enhanced", 5, 5, 0, 4);
+    const lambda = estimateBandLambda(fc, "score_enhanced");
 
-    for (const cell_id of [1, 2, 3, 4]) {
-      const point: [number, number] = [(cell_id % 5) * 10 + 5, 5];
-      const painted = bands.filter((band) => contains(band.geometry, point)).at(-1);
-      const expectedIndex = bandIndexForScore(scores[cell_id], 5, 45, lambda, 4);
-      expect(painted?.bandIndex).toBe(expectedIndex);
-      expect(painted?.color).toBe(colorForBandIndex(expectedIndex));
-    }
+    const validZeroPainted = bands.filter((band) => contains(band.geometry, [15, 15])).at(-1);
+    expect(validZeroPainted).toBeDefined();
+    expect(validZeroPainted?.color).toBe(colorForBandIndex(validZeroPainted!.bandIndex));
+    expect(bandIndexForScore(0, 0, 45, lambda, 4)).toBe(3);
+    expect(bands.some((band) => contains(band.geometry, [25, 15]))).toBe(false);
+  });
+
+  it("applies positive thresholds equally to valid zero and zero-weighted cells", () => {
+    const fc = grid([0, 0, 9, 1], 2, 10, [false, true, false, false]);
+    const bands = computeContourBands(fc, "score_enhanced", 2, 2, 1, 2);
     expect(bands.some((band) => contains(band.geometry, [5, 5]))).toBe(false);
+    expect(bands.some((band) => contains(band.geometry, [15, 5]))).toBe(false);
   });
 
   it("omits empty bands explicitly without throwing", () => {

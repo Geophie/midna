@@ -158,6 +158,7 @@ export interface RunParams {
   analysisCrs: string;
   cellsX: number;
   cellsY: number;
+  aoiPaddingPct: number;
   f: number;
   g: number;
   k: number;
@@ -195,6 +196,14 @@ export interface LorenzCurve {
   y: number[];
 }
 
+export interface BoundaryDiagnostics {
+  peakRaw: number;
+  edgeMaxRaw: number;
+  edgeMeanRaw: number;
+  edgeP95Raw: number;
+  edgePeakRatio: number | null;
+}
+
 export type RunOutcome =
   | {
     status: "done";
@@ -211,6 +220,7 @@ export type RunOutcome =
     enhancedLorenz: LorenzCurve | null;
     baselineEval: EvalResult | null;
     enhancedEval: EvalResult | null;
+    boundaryDiagnostics: BoundaryDiagnostics | null;
     baselineGeoJson: string;
     enhancedGeoJson: string | null;
   }
@@ -314,6 +324,7 @@ const api = {
       analysis_crs: params.analysisCrs,
       cells_x: params.cellsX,
       cells_y: params.cellsY,
+      aoi_padding_pct: params.aoiPaddingPct,
       f: params.f,
       g: params.g,
       k: params.k,
@@ -363,6 +374,13 @@ const api = {
           enhanced_lorenz: LorenzCurve | null;
           baseline_eval: EvalResult | null;
           enhanced_eval: EvalResult | null;
+          boundary_diagnostics: {
+            peak_raw: number;
+            edge_max_raw: number;
+            edge_mean_raw: number;
+            edge_p95_raw: number;
+            edge_peak_ratio: number | null;
+          } | null;
           baseline_geojson: string;
           enhanced_geojson: string | null;
         };
@@ -385,6 +403,15 @@ const api = {
         enhancedLorenz: result.enhanced_lorenz,
         baselineEval: result.baseline_eval,
         enhancedEval: result.enhanced_eval,
+        boundaryDiagnostics: result.boundary_diagnostics
+          ? {
+              peakRaw: result.boundary_diagnostics.peak_raw,
+              edgeMaxRaw: result.boundary_diagnostics.edge_max_raw,
+              edgeMeanRaw: result.boundary_diagnostics.edge_mean_raw,
+              edgeP95Raw: result.boundary_diagnostics.edge_p95_raw,
+              edgePeakRatio: result.boundary_diagnostics.edge_peak_ratio,
+            }
+          : null,
         baselineGeoJson: result.baseline_geojson,
         enhancedGeoJson: result.enhanced_geojson,
       };
