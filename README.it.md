@@ -112,7 +112,7 @@ I comandi eseguono rispettivamente i test unitari Vitest, i test end-to-end Play
 
 | Contributore | Ruolo | Contributo |
 | --- | --- | --- |
-| **Sofia Maria Russo** ([@Geophie](https://github.com/Geophie)) | Responsabile del progetto / Ricerca | Concetto originale, metodologia e autrice dello studio scientifico |
+| **Sofia Maria Russo** ([@Geophie](https://github.com/Geophie)) | Responsabile del progetto / Ricerca | Concetto originale, metodologia e autrice dello studio scientifico e degli script originali|
 | **Giacomo Butera** ([@WhtNoiz](https://github.com/WhtNoiz)) | Sviluppatore | Applicazione React/Next.js, pipeline Pyodide nel browser, visualizzazione ed esportazione |
 
 ## Citazione
