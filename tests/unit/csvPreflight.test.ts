@@ -17,6 +17,11 @@ describe("preflightCrimesCsv", () => {
     expect(result.errors).toContain("error_csv_columns");
   });
 
+  it("flags ambiguous case-insensitive coordinate headers", () => {
+    const csv = "Latitude,latitude,Longitude\n33.75,33.75,-84.39\n33.76,33.76,-84.38\n";
+    expect(preflightCrimesCsv(csv, "Latitude", "Longitude").errors).toEqual(["error_csv_columns_ambiguous"]);
+  });
+
   it("flags an empty file", () => {
     const result = preflightCrimesCsv("", "Latitude", "Longitude");
     expect(result.ok).toBe(false);

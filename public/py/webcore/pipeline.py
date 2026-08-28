@@ -28,6 +28,27 @@ def _lorenz_dict(values):
     return {"x": x.tolist(), "y": y.tolist()}
 
 
+def _boundary_diagnostics(scored_gdf, cells_x, cells_y):
+    scores = scored_gdf.sort_values("cell_id")["score"].to_numpy(dtype=float)
+    cell_ids = scored_gdf.sort_values("cell_id")["cell_id"].to_numpy(dtype=int)
+    if len(scores) != cells_x * cells_y or not np.array_equal(cell_ids, np.arange(len(scores))):
+        return None
+    surface = scores.reshape(cells_y, cells_x)
+    edge_mask = np.zeros(surface.shape, dtype=bool)
+    edge_mask[[0, -1], :] = True
+    edge_mask[:, [0, -1]] = True
+    edge = surface[edge_mask]
+    peak = float(scores.max())
+    edge_max = float(edge.max())
+    return {
+        "peak_raw": peak,
+        "edge_max_raw": edge_max,
+        "edge_mean_raw": float(edge.mean()),
+        "edge_p95_raw": float(np.percentile(edge, 95)),
+        "edge_peak_ratio": edge_max / peak if peak != 0 else None,
+    }
+
+
 def _load_geodata(path, lat_col, lon_col, input_crs, analysis_crs):
     """Mirrors the desktop app's `_load_geodata` (app_dpg.py): CSV points via
     lat/lon columns, anything else via gpd.read_file — same validation and
@@ -35,17 +56,18 @@ def _load_geodata(path, lat_col, lon_col, input_crs, analysis_crs):
     inclusion/exclusion layers."""
     if path.lower().endswith(".csv"):
         df = pd.read_csv(path)
-        if lat_col not in df.columns or lon_col not in df.columns:
+        resolved_lat_col, resolved_lon_col = aoi.resolveCsvColumnNames(df.columns, lat_col, lon_col)
+        if resolved_lat_col not in df.columns or resolved_lon_col not in df.columns:
             raise ValueError("error_csv_columns")
         if df.empty:
             raise ValueError("error_file_empty")
-        for col in (lat_col, lon_col):
+        for col in (resolved_lat_col, resolved_lon_col):
             if not pd.api.types.is_numeric_dtype(df[col]):
                 raise ValueError("error_col_not_numeric")
             if df[col].isnull().any() or np.isinf(df[col]).any():
                 raise ValueError("error_col_invalid_values")
         gdf = gpd.GeoDataFrame(
-            df, geometry=gpd.points_from_xy(df[lon_col], df[lat_col]), crs=input_crs
+            df, geometry=gpd.points_from_xy(df[resolved_lon_col], df[resolved_lat_col]), crs=input_crs
         )
         return gdf if str(gdf.crs) == str(analysis_crs) else gdf.to_crs(analysis_crs)
 
@@ -99,9 +121,10 @@ async def run(params, progress_cb):
         latCol=params["lat_col"],
         lonCol=params["lon_col"],
     )
+    lat_col, lon_col = aoi.resolveCsvColumnNames(df.columns, params["lat_col"], params["lon_col"])
     crimes_gdf = gpd.GeoDataFrame(
         df,
-        geometry=gpd.points_from_xy(df[params["lon_col"]], df[params["lat_col"]]),
+        geometry=gpd.points_from_xy(df[lon_col], df[lat_col]),
         crs=params["input_crs"],
     )
     if str(crimes_gdf.crs) != str(params["analysis_crs"]):
@@ -145,7 +168,10 @@ async def run(params, progress_cb):
             )
 
         crimes_xy_formula = np.array([(g.x, g.y) for g in crimes_gdf_aoi.geometry])
-        aoi_gdf = aoi.computeAoiFromGdf(crimes_gdf_aoi)
+        # Outer bounding-box padding, percent per side (default 10).
+        # Ignored on the custom-grid path above.
+        buffer_pct = float(params.get("aoi_padding_pct", 10.0)) / 100.0
+        aoi_gdf = aoi.computeAoiFromGdf(crimes_gdf_aoi, bufferPct=buffer_pct)
         grid_gdf = grid.createGrid(aoi_gdf, params["cells_x"], params["cells_y"])
 
     lon, lat, _lonlat_msg = grid.resolveLonlat(grid_gdf)
@@ -180,6 +206,10 @@ async def run(params, progress_cb):
         scored_gdf = rossmo_loop.rossmoLoop(
             grid_gdf, crimes_xy_formula, b_value, params["f"], params["g"], params.get("k", 1.0)
         )
+    scored_gdf["score_raw"] = scored_gdf["score"]
+    boundary_diagnostics = None if grid_path else _boundary_diagnostics(
+        scored_gdf, params["cells_x"], params["cells_y"]
+    )
     baseline_gdf = ranking.rankCells(scored_gdf.copy(), col="score")
 
     # --- Step 4: weight layers -> score_enhanced ------------------------------
@@ -261,6 +291,9 @@ async def run(params, progress_cb):
     enhanced_gdf = None
     if weight_cols:
         scored_gdf = weights.applyWeights(scored_gdf, weight_cols)
+        scored_gdf["effective_weight"] = scored_gdf[weight_cols].prod(axis=1)
+        scored_gdf["zero_weight_applied"] = scored_gdf[weight_cols].eq(0).any(axis=1)
+        scored_gdf["score_enhanced_raw"] = scored_gdf["score_enhanced"]
         score_col = "score_enhanced"
 
     # --- Step 5: Gini (on raw scores, before normalization) + normalize ------
@@ -342,6 +375,7 @@ async def run(params, progress_cb):
         "enhanced_lorenz": enhanced_lorenz,
         "baseline_eval": baseline_eval,
         "enhanced_eval": enhanced_eval,
+        "boundary_diagnostics": boundary_diagnostics,
         "baseline_geojson": baseline_gdf.to_json(),
         "enhanced_geojson": enhanced_gdf.to_json() if enhanced_gdf is not None else None,
     }

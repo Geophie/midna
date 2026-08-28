@@ -94,6 +94,17 @@ export function ParamsForm() {
           {...register("cellsY", { setValueAs: parseLocaleFloat })}
         />
       </label>
+      <label className="col-span-2 flex flex-col gap-1">
+        {t("param_aoi_padding")}
+        {gridFileSuffix}
+        <input
+          type="text"
+          inputMode="decimal"
+          className={inputClass}
+          disabled={gridDisabled}
+          {...register("aoiPaddingPct", { setValueAs: parseLocaleFloat })}
+        />
+      </label>
       <label className="flex flex-col gap-1">
         {t("param_f")}
         <input

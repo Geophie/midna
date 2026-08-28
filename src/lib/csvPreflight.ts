@@ -1,3 +1,5 @@
+import { resolveCsvCoordinateColumns } from "@/lib/csvColumns";
+
 export interface CsvPreflightResult {
   ok: boolean;
   errors: string[];
@@ -25,11 +27,15 @@ export function preflightCrimesCsv(
   }
 
   const header = splitCsvLine(lines[0]);
-  const latIdx = header.indexOf(latCol);
-  const lonIdx = header.indexOf(lonCol);
-  if (latIdx === -1 || lonIdx === -1) {
-    return { ok: false, errors: ["error_csv_columns"], rowCount: 0 };
+  const columns = resolveCsvCoordinateColumns(header, latCol, lonCol);
+  if ("error" in columns) {
+    return {
+      ok: false,
+      errors: [columns.error === "ambiguous" ? "error_csv_columns_ambiguous" : "error_csv_columns"],
+      rowCount: 0,
+    };
   }
+  const { latIdx, lonIdx } = columns;
 
   const dataLines = lines.slice(1);
   if (dataLines.length === 0) {

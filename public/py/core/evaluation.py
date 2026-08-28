@@ -2,6 +2,20 @@ import numpy as np
 import geopandas as gpd
 from shapely.geometry import Point
 
+_METRIC_UNITS = {"metre", "meter"}
+
+
+def _metricView(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """Returns gdf in a metre-based CRS so `.distance()` yields metres and
+    `.area` yields m^2. Geographic CRSs *and* projected CRSs whose linear unit
+    is not the metre (e.g. US survey-foot State Plane zones) are reprojected to
+    their local UTM zone; a CRS already in metres is returned unchanged."""
+    crs = gdf.crs
+    if crs is None:
+        return gdf
+    already_metric = not crs.is_geographic and {ax.unit_name for ax in crs.axis_info} <= _METRIC_UNITS
+    return gdf if already_metric else gdf.to_crs(gdf.estimate_utm_crs())
+
 
 def computeHitScore(gridGdf: gpd.GeoDataFrame, anchorPoint: Point, scoreCol: str = "score") -> dict:
     """
@@ -22,13 +36,13 @@ def computeHitScore(gridGdf: gpd.GeoDataFrame, anchorPoint: Point, scoreCol: str
     if gridGdf.empty:
         raise ValueError("Cannot evaluate hit score on an empty grid.")
 
-    # Reproject to metric CRS for distance measurements if input is geographic
-    if gridGdf.crs and gridGdf.crs.is_geographic:
-        metricCrs = gridGdf.estimate_utm_crs()
-        metricGdf = gridGdf.to_crs(metricCrs)
-        metricAnchor = gpd.GeoDataFrame(geometry=[anchorPoint], crs=gridGdf.crs).to_crs(metricCrs).geometry.iloc[0]
+    # Distances/areas must be in metres regardless of the analysis CRS's unit.
+    metricGdf = _metricView(gridGdf)
+    if gridGdf.crs is not None and str(metricGdf.crs) != str(gridGdf.crs):
+        metricAnchor = (
+            gpd.GeoDataFrame(geometry=[anchorPoint], crs=gridGdf.crs).to_crs(metricGdf.crs).geometry.iloc[0]
+        )
     else:
-        metricGdf = gridGdf
         metricAnchor = anchorPoint
 
     contained = metricGdf[metricGdf.geometry.covers(metricAnchor)]
@@ -80,9 +94,7 @@ def computeSearchArea(gridGdf: gpd.GeoDataFrame, anchorScore: float, scoreCol: s
     priorityCells = gridGdf[gridGdf[scoreCol] >= anchorScore]
     if priorityCells.empty:
         return {"n_priority_cells": 0, "search_area_km2": 0.0, "total_cells": len(gridGdf), "hit_score_pct": 0.0}
-    areaCells = priorityCells
-    if areaCells.crs and areaCells.crs.is_geographic:
-        areaCells = areaCells.to_crs(areaCells.estimate_utm_crs())
+    areaCells = _metricView(priorityCells)
     areaKm2 = float(areaCells.geometry.area.sum() / 1e6)
 
     return {
@@ -106,3 +118,22 @@ if __name__ == "__main__":
     hit = computeHitScore(gdf, gdf.geometry.iloc[0].centroid)
     assert hit["distance_to_nearest_cell_m"] == 0
     assert hit["home_guess_distance_m"] > 0
+
+    # A US survey-foot projected CRS must report the SAME metres/km^2 as a
+    # metre-based CRS covering the same ground, not foot-inflated numbers.
+    atl = gpd.GeoDataFrame(
+        {"score": [1.0, 2.0, 3.0], "rank": [3, 2, 1]},
+        geometry=[box(-84.40, 33.74, -84.39, 33.75),
+                  box(-84.39, 33.74, -84.38, 33.75),
+                  box(-84.38, 33.74, -84.37, 33.75)],
+        crs="EPSG:4326",
+    )
+    ft = atl.to_crs("EPSG:2240")   # NAD83 / Georgia West (ftUS)
+    m = atl.to_crs("EPSG:26967")   # NAD83 / Georgia West (metres)
+    a_ft = computeSearchArea(ft, 1.0)["search_area_km2"]
+    a_m = computeSearchArea(m, 1.0)["search_area_km2"]
+    assert abs(a_ft - a_m) / a_m < 1e-3, (a_ft, a_m)
+    h_ft = computeHitScore(ft, ft.geometry.iloc[0].centroid)["home_guess_distance_m"]
+    h_m = computeHitScore(m, m.geometry.iloc[0].centroid)["home_guess_distance_m"]
+    assert abs(h_ft - h_m) / h_m < 1e-3, (h_ft, h_m)
+    print("OK: foot-based CRS reports metres consistently with a metre CRS")

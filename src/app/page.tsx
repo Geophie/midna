@@ -102,6 +102,7 @@ export default function Home() {
           analysisCrs: params.analysisCrs,
           cellsX: params.cellsX,
           cellsY: params.cellsY,
+          aoiPaddingPct: params.aoiPaddingPct,
           f: params.f,
           g: params.g,
           k: params.k,

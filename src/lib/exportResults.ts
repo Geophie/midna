@@ -9,7 +9,11 @@ interface CellFeatureProps {
   cell_id: number;
   rank: number;
   score: number;
+  score_raw?: number;
   score_enhanced?: number;
+  score_enhanced_raw?: number;
+  effective_weight?: number;
+  zero_weight_applied?: boolean;
   Longitude: number;
   Latitude: number;
 }
@@ -25,14 +29,21 @@ export function buildCsvExport(result: RunResult): { csv: string; csvt: string; 
   const hasEnhanced = rows.some((r) => r.score_enhanced !== undefined);
 
   const cols = hasEnhanced
-    ? (["cell_id", "rank", "score", "score_enhanced", "Longitude", "Latitude"] as const)
-    : (["cell_id", "rank", "score", "Longitude", "Latitude"] as const);
+    ? ([
+        "cell_id", "rank", "score", "score_raw", "score_enhanced", "score_enhanced_raw",
+        "effective_weight", "zero_weight_applied", "Longitude", "Latitude",
+      ] as const)
+    : (["cell_id", "rank", "score", "score_raw", "Longitude", "Latitude"] as const);
 
   const typeMap: Record<string, string> = {
     cell_id: "Integer",
     rank: "Integer",
     score: "Real",
+    score_raw: "Real",
     score_enhanced: "Real",
+    score_enhanced_raw: "Real",
+    effective_weight: "Real",
+    zero_weight_applied: "String",
     Longitude: "Real",
     Latitude: "Real",
     WKT: "WKT",

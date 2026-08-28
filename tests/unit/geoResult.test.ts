@@ -7,6 +7,8 @@ import {
   colorForBandIndex,
   computeLegendBands,
   estimateBandLambda,
+  isSurfaceFeature,
+  isFeatureVisible,
   type GridFeatureCollection,
 } from "@/lib/geoResult";
 
@@ -17,7 +19,7 @@ describe("scoreKeyForView", () => {
   });
 });
 
-function fcOf(scores: number[], enhanced?: number[], crimeCounts?: number[]): GridFeatureCollection {
+function fcOf(scores: number[], enhanced?: number[], crimeCounts?: number[], zeroWeighted?: boolean[]): GridFeatureCollection {
   return {
     features: scores.map((score, i) => ({
       properties: {
@@ -28,6 +30,7 @@ function fcOf(scores: number[], enhanced?: number[], crimeCounts?: number[]): Gr
         Longitude: 0,
         Latitude: 0,
         crime_count: crimeCounts?.[i],
+        zero_weight_applied: zeroWeighted?.[i],
       },
       geometry: { type: "Point", coordinates: [0, 0] },
     })),
@@ -48,6 +51,17 @@ describe("scoreRange", () => {
   it("returns [0, 0] for an empty collection or a missing field", () => {
     expect(scoreRange(fcOf([]), "score")).toEqual([0, 0]);
     expect(scoreRange(fcOf([1, 2]), "score_enhanced")).toEqual([0, 0]);
+  });
+
+  it("includes valid normalized zero but excludes explicitly zero-weighted enhanced cells", () => {
+    const fc = fcOf([0, 50, 100], [0, 25, 100], undefined, [false, true, false]);
+    expect(scoreRange(fc, "score")).toEqual([0, 100]);
+    expect(scoreRange(fc, "score_enhanced")).toEqual([0, 100]);
+    expect(isSurfaceFeature(fc.features[0], "score_enhanced")).toBe(true);
+    expect(isSurfaceFeature(fc.features[1], "score_enhanced")).toBe(false);
+    expect(isFeatureVisible(fc.features[0], "score_enhanced", 0)).toBe(true);
+    expect(isFeatureVisible(fc.features[0], "score_enhanced", 1)).toBe(false);
+    expect(isFeatureVisible(fc.features[1], "score_enhanced", 0)).toBe(false);
   });
 });
 
@@ -105,10 +119,10 @@ describe("estimateBandLambda", () => {
     expect(estimateBandLambda(fc, "score")).toBeLessThan(0.2);
   });
 
-  it("excludes zero-score (masked/no-signal) cells from the estimate", () => {
-    const withZeros = fcOf([0, 0, 0, 8, 9, 10, 11, 12]);
-    const withoutZeros = fcOf([8, 9, 10, 11, 12]);
-    expect(estimateBandLambda(withZeros, "score")).toBeCloseTo(estimateBandLambda(withoutZeros, "score"), 10);
+  it("uses valid normalized-zero cells in the estimate", () => {
+    expect(estimateBandLambda(fcOf([0, 1, 1, 1, 100]), "score")).not.toBe(
+      estimateBandLambda(fcOf([1, 1, 1, 100]), "score")
+    );
   });
 
   it("returns 1 for a degenerate all-equal (zero-stdev) distribution", () => {

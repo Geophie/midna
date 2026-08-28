@@ -4,6 +4,20 @@ import geopandas as gpd
 from shapely.geometry import box
 
 
+def resolveCsvColumnNames(columns, latCol: str, lonCol: str) -> tuple[str, str]:
+    """Resolve configured coordinate names without renaming DataFrame columns."""
+    def resolve(requested: str) -> str:
+        matches = [column for column in columns if str(column).casefold() == requested.casefold()]
+        if len(matches) > 1:
+            names = ", ".join(repr(column) for column in matches)
+            raise ValueError(
+                f"CSV coordinate column '{requested}' is ambiguous: case-insensitive matches {names}."
+            )
+        return matches[0] if matches else requested
+
+    return resolve(latCol), resolve(lonCol)
+
+
 def loadCrimesCsv(csvPath: str, latCol: str = "Latitude", lonCol: str = "Longitude") -> pd.DataFrame:
     """
     Loads the crime CSV file and returns a DataFrame.
@@ -13,13 +27,14 @@ def loadCrimesCsv(csvPath: str, latCol: str = "Latitude", lonCol: str = "Longitu
 
     df = pd.read_csv(csvPath)
 
-    if latCol not in df.columns or lonCol not in df.columns:
+    resolvedLatCol, resolvedLonCol = resolveCsvColumnNames(df.columns, latCol, lonCol)
+    if resolvedLatCol not in df.columns or resolvedLonCol not in df.columns:
         raise ValueError(f"Columns '{latCol}' and/or '{lonCol}' not found in {csvPath}.")
 
     if df.empty:
         raise ValueError(f"The crimes file '{csvPath}' is empty.")
 
-    for col in [latCol, lonCol]:
+    for col in [resolvedLatCol, resolvedLonCol]:
         if not pd.api.types.is_numeric_dtype(df[col]):
             raise ValueError(f"Column '{col}' must contain numeric values.")
         if df[col].isnull().any():
@@ -48,4 +63,3 @@ def computeAoiFromGdf(gdf: gpd.GeoDataFrame, bufferPct: float = 0.1) -> gpd.GeoD
         ymax + h * bufferPct,
     )
     return gpd.GeoDataFrame(geometry=[bbox], crs=gdf.crs)
-
