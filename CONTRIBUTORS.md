@@ -2,7 +2,7 @@
 
 | Contributor                                                    | Role                    | Contributions                                                                                                 |
 | -------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------- |
-| **Sofia Maria Russo** ([@Geophie](https://github.com/Geophie)) | Project lead / Research | Original concept, methodology design, author of the underlying paper                                          |
+| **Sofia Maria Russo** ([@Geophie](https://github.com/Geophie)) | Project lead / Research | Original concept, methodology design, author of the underlying paper and original scripts                     |                    
 | **Giacomo Butera** ([@WhtNoiz](https://github.com/WhtNoiz))    | Developer               | Development of the web application: React/Next.js frontend, in-browser Pyodide pipeline, export functionality |
 
 ---
