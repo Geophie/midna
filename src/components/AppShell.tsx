@@ -107,7 +107,7 @@ export function AppShell({
           below, so the title lines up with the main column's left edge in
           both modes. */}
       <header
-        className={`grid w-full grid-cols-1 items-center gap-4 px-6 pt-8 pb-4 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] ${
+        className={`grid w-full grid-cols-1 items-center gap-4 px-3 pt-8 pb-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] ${
           mapPanelVisible ? "" : "mx-auto max-w-5xl"
         }`}
       >
@@ -134,7 +134,7 @@ export function AppShell({
           className="flex flex-1 flex-col lg:flex-row"
           style={{ "--left-panel-width": `${leftPanelWidth}px` } as CSSProperties}
         >
-          <main className="min-w-0 px-6 pb-16 lg:w-[var(--left-panel-width)] lg:shrink-0 lg:py-6 lg:pr-6">{children}</main>
+          <main className="min-w-0 px-3 pb-24 sm:px-6 lg:w-[var(--left-panel-width)] lg:shrink-0 lg:py-6 lg:pr-6 lg:pb-16">{children}</main>
           <div
             role="separator"
             aria-label="Resize workspace"
@@ -150,12 +150,12 @@ export function AppShell({
           >
             <span className="absolute inset-y-6 left-1/2 w-px -translate-x-1/2 bg-border transition-colors group-hover:bg-accent group-focus:bg-accent" />
           </div>
-          <div className="hidden min-w-0 flex-1 lg:sticky lg:top-0 lg:block lg:h-screen lg:py-6 lg:pr-6">
+          <div className="min-w-0 flex-1 pb-24 lg:sticky lg:top-0 lg:h-screen lg:py-6 lg:pr-6 lg:pb-6">
             {mapPanel}
           </div>
         </div>
       ) : (
-        <main className="mx-auto w-full max-w-5xl px-6 pb-16">{children}</main>
+        <main className="mx-auto w-full max-w-5xl px-3 pb-24 sm:px-6 lg:pb-16">{children}</main>
       )}
     </div>
   );

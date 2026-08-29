@@ -299,7 +299,8 @@ export function MapView({ activeView }: { activeView: HeatmapView }) {
   const CARTO_API_KEY = process.env.NEXT_PUBLIC_CARTO_API_KEY;
 
   return (
-    <div className="relative h-full w-full">
+    <div className="flex h-full w-full flex-col lg:relative">
+      <div className="relative h-[50vh] shrink-0 lg:h-full">
       <MapContainer center={DEFAULT_CENTER} zoom={DEFAULT_ZOOM} className="h-full w-full" attributionControl>
         <TileLayer
            url={`https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=${CARTO_API_KEY}`}
@@ -334,8 +335,10 @@ export function MapView({ activeView }: { activeView: HeatmapView }) {
         </div>
       )}
 
+      </div>
+
       {/* Floating overlay controls — the map fills the whole panel edge-to-edge behind these. */}
-      <div className="pointer-events-none absolute top-3 right-3 z-[1000] flex flex-col items-end gap-2">
+      <div className="flex flex-col gap-2 p-3 lg:pointer-events-none lg:absolute lg:top-3 lg:right-3 lg:z-[1000] lg:items-end lg:p-0">
         {hasHeatmap && (
           <FloatingCard>
             {hasEnhanced && (
@@ -436,7 +439,7 @@ export function MapView({ activeView }: { activeView: HeatmapView }) {
       </div>
 
       {showHeatmap && legendVisible && (
-        <div className="pointer-events-none absolute bottom-3 left-3 z-[1000] max-h-[calc(100%-1.5rem)]">
+        <div className="px-3 pb-3 lg:pointer-events-none lg:absolute lg:bottom-3 lg:left-3 lg:z-[1000] lg:max-h-[calc(100%-1.5rem)] lg:p-0">
           <FloatingCard className="max-h-full overflow-y-auto">
             <Legend bands={legendBands} />
           </FloatingCard>

@@ -8,7 +8,7 @@ import { useT } from "@/lib/i18n";
 import { FileField } from "@/components/ui/FileField";
 
 const inputClass =
-  "rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent";
+  "rounded-lg border border-border bg-background px-3 py-1.5 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-accent sm:text-sm";
 
 function parseCoord(raw: string): number | null {
   if (raw.trim() === "") return null;
