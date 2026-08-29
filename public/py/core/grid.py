@@ -103,13 +103,3 @@ def resolveLonlat(gdf: gpd.GeoDataFrame):
     return (lonC, latC,
             f"existing '{lonCol}'/'{latCol}' columns ignored — {int((~covers).sum())} cell(s) "
             f"don't fall inside their own geometry; using computed centroid instead")
-
-
-def toPointLayer(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-    """
-    Copy of gdf with polygon geometry replaced by a Point built from its own
-    Longitude/Latitude columns (EPSG:4326) — for QGIS Heatmap symbology, which
-    only works on point layers.
-    """
-    pts = gdf.drop(columns="geometry")
-    return gpd.GeoDataFrame(pts, geometry=gpd.points_from_xy(gdf["Longitude"], gdf["Latitude"]), crs="EPSG:4326")

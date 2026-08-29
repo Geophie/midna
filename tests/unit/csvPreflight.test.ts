@@ -63,6 +63,17 @@ describe("preflightCrimesCsv", () => {
     expect(result.errors).toContain("error_crimes_identical");
   });
 
+  it("handles quoted fields with embedded commas before the coordinate columns", () => {
+    const csv =
+      'ID,Location,Latitude,Longitude\n' +
+      '1,"Alley near 1017 W Gage Ave, Los Angeles, CA",33.98,-118.29\n' +
+      '2,"2500 block of W Vernon Ave, Los Angeles, CA",34.00,-118.32\n';
+    const result = preflightCrimesCsv(csv, "Latitude", "Longitude");
+    expect(result.ok).toBe(true);
+    expect(result.errors).toEqual([]);
+    expect(result.rowCount).toBe(2);
+  });
+
   it("respects custom column names", () => {
     const csv = "y,x\n1.0,2.0\n3.0,4.0\n";
     const result = preflightCrimesCsv(csv, "y", "x");
