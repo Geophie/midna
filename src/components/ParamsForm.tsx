@@ -9,7 +9,7 @@ import { useT } from "@/lib/i18n";
 import { Toggle } from "@/components/ui/Toggle";
 
 const inputClass =
-  "rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent";
+  "rounded-lg border border-border bg-background px-3 py-1.5 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-accent sm:text-sm";
 
 export function ParamsForm() {
   const t = useT();

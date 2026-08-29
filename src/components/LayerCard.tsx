@@ -12,7 +12,7 @@ import { useT } from "@/lib/i18n";
 import { useState } from "react";
 
 const inputClass =
-  "rounded-lg border border-border bg-background px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent";
+  "rounded-lg border border-border bg-background px-2 py-1 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-accent sm:text-sm";
 
 export function LayerCard({ entry }: { entry: LayerEntry }) {
   const t = useT();
@@ -229,12 +229,12 @@ function DemFields({ id, layer }: { id: string; layer: DemLayerSpec }) {
       updateLayer(id, { [key]: parseLocaleFloat(e.target.value) } as Partial<DemLayerSpec>);
 
   return (
-    <div className="grid grid-cols-[1fr_1fr] gap-x-4 gap-y-3 text-sm">
-      <span className="text-xs font-medium text-foreground-muted">{t("dem_threshold_col_label")}</span>
-      <span className="text-xs font-medium text-foreground-muted">{t("weight_col_label")}</span>
+    <div className="grid grid-cols-1 gap-x-4 gap-y-3 text-sm sm:grid-cols-[1fr_1fr]">
+      <span className="hidden text-xs font-medium text-foreground-muted sm:block">{t("dem_threshold_col_label")}</span>
+      <span className="hidden text-xs font-medium text-foreground-muted sm:block">{t("weight_col_label")}</span>
 
       <label className="flex flex-col gap-1">
-        {t("terrain_flatland")}
+        <span>{t("terrain_flatland")} <span className="text-foreground-muted sm:hidden">— {t("dem_threshold_col_label")}</span></span>
         <input
           type="text"
           inputMode="decimal"
@@ -244,7 +244,7 @@ function DemFields({ id, layer }: { id: string; layer: DemLayerSpec }) {
         />
       </label>
       <label className="flex flex-col gap-1">
-        {t("terrain_flatland")}
+        <span>{t("terrain_flatland")} <span className="text-foreground-muted sm:hidden">— {t("weight_col_label")}</span></span>
         <input
           type="text"
           inputMode="decimal"
@@ -255,7 +255,7 @@ function DemFields({ id, layer }: { id: string; layer: DemLayerSpec }) {
       </label>
 
       <label className="flex flex-col gap-1">
-        {t("terrain_hillside")}
+        <span>{t("terrain_hillside")} <span className="text-foreground-muted sm:hidden">— {t("dem_threshold_col_label")}</span></span>
         <input
           type="text"
           inputMode="decimal"
@@ -265,7 +265,7 @@ function DemFields({ id, layer }: { id: string; layer: DemLayerSpec }) {
         />
       </label>
       <label className="flex flex-col gap-1">
-        {t("terrain_hillside")}
+        <span>{t("terrain_hillside")} <span className="text-foreground-muted sm:hidden">— {t("weight_col_label")}</span></span>
         <input
           type="text"
           inputMode="decimal"
@@ -276,7 +276,7 @@ function DemFields({ id, layer }: { id: string; layer: DemLayerSpec }) {
       </label>
 
       <label className="flex flex-col gap-1">
-        {t("terrain_mountain")}
+        <span>{t("terrain_mountain")} <span className="text-foreground-muted sm:hidden">— {t("dem_threshold_col_label")}</span></span>
         <input
           type="text"
           inputMode="decimal"
@@ -286,7 +286,7 @@ function DemFields({ id, layer }: { id: string; layer: DemLayerSpec }) {
         />
       </label>
       <label className="flex flex-col gap-1">
-        {t("terrain_mountain")}
+        <span>{t("terrain_mountain")} <span className="text-foreground-muted sm:hidden">— {t("weight_col_label")}</span></span>
         <input
           type="text"
           inputMode="decimal"
@@ -296,9 +296,9 @@ function DemFields({ id, layer }: { id: string; layer: DemLayerSpec }) {
         />
       </label>
 
-      <div />
+      <div className="hidden sm:block" />
       <label className="flex flex-col gap-1">
-        {t("terrain_nodata")}
+        <span>{t("terrain_nodata")} <span className="text-foreground-muted sm:hidden">— {t("weight_col_label")}</span></span>
         <input
           type="text"
           inputMode="decimal"

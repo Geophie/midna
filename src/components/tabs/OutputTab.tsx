@@ -46,7 +46,7 @@ export function OutputTab() {
             onClick={() => setLorenzExpanded(!lorenzExpanded)}
             aria-label={lorenzExpanded ? t("lorenz_collapse") : t("lorenz_expand")}
             title={lorenzExpanded ? t("lorenz_collapse") : t("lorenz_expand")}
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background-elevated text-foreground-muted transition-colors hover:text-foreground"
+            className="hidden h-8 w-8 items-center justify-center rounded-full border border-border bg-background-elevated text-foreground-muted transition-colors hover:text-foreground sm:flex"
           >
             {lorenzExpanded ? "−" : "+"}
           </button>

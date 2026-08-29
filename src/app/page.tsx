@@ -1,5 +1,7 @@
 "use client";
 
+import { IoCloudUploadOutline, IoSettingsOutline, IoLayersOutline, IoBarChartOutline, IoHelpCircleOutline } from "react-icons/io5";
+
 import * as Comlink from "comlink";
 import { useCallback, useEffect } from "react";
 import { AppShell } from "@/components/AppShell";
@@ -25,11 +27,11 @@ export default function Home() {
 
   const t = useT();
   const TABS: TabDef[] = [
-    { id: "input", label: t("tab_input") },
-    { id: "parametri", label: t("tab_params") },
-    { id: "layers", label: t("tab_layers") },
-    { id: "output", label: t("tab_output") },
-    { id: "help", label: t("tab_help") },
+    { id: "input", label: t("tab_input"), icon: <IoCloudUploadOutline /> },
+    { id: "parametri", label: t("tab_params"), icon: <IoSettingsOutline /> },
+    { id: "layers", label: t("tab_layers"), icon: <IoLayersOutline /> },
+    { id: "output", label: t("tab_output"), icon: <IoBarChartOutline /> },
+    { id: "help", label: t("tab_help"), icon: <IoHelpCircleOutline /> },
   ];
 
   const activeTab = useAppStore((s) => s.activeTab);
