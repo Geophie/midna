@@ -1,13 +1,10 @@
 import { resolveCsvCoordinateColumns } from "@/lib/csvColumns";
+import { splitCsvLine } from "@/lib/csvSplit";
 import { normalizeEpsg, toWgs84 } from "@/lib/crsProject";
 
 export interface LatLon {
   lat: number;
   lon: number;
-}
-
-function splitCsvLine(line: string): string[] {
-  return line.split(",").map((cell) => cell.trim());
 }
 
 /**

@@ -19,10 +19,6 @@ export function getPayload(key: string): Uint8Array {
   return payloads.get(key) ?? new Uint8Array(0);
 }
 
-export function hasPayload(key: string): boolean {
-  return (payloads.get(key)?.length ?? 0) > 0;
-}
-
 export function deletePayload(key: string): void {
   payloads.delete(key);
 }

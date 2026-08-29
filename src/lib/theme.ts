@@ -2,15 +2,6 @@ export type Theme = "light" | "dark";
 
 const STORAGE_KEY = "midna-webapp-theme";
 
-function systemTheme(): Theme {
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-}
-
-function readStoredTheme(): Theme | null {
-  const stored = window.localStorage.getItem(STORAGE_KEY);
-  return stored === "light" || stored === "dark" ? stored : null;
-}
-
 /**
  * Flips the `data-theme` attribute directly, imperatively — not React state.
  * The icon swap is pure CSS (`dark:` variant keyed off that same attribute,
@@ -36,7 +27,3 @@ export const THEME_INIT_SCRIPT = `
   } catch (e) {}
 })();
 `;
-
-// Exported for completeness/tests — not needed by ThemeToggle itself, which
-// reads the DOM directly on click.
-export { systemTheme, readStoredTheme };

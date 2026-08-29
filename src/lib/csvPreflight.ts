@@ -1,4 +1,5 @@
 import { resolveCsvCoordinateColumns } from "@/lib/csvColumns";
+import { splitCsvLine } from "@/lib/csvSplit";
 
 export interface CsvPreflightResult {
   ok: boolean;
@@ -6,14 +7,11 @@ export interface CsvPreflightResult {
   rowCount: number;
 }
 
-function splitCsvLine(line: string): string[] {
-  return line.split(",").map((cell) => cell.trim());
-}
-
 /**
- * Fast client-side pre-check before spinning up Pyodide. Not a full RFC4180
- * parser (no quoted-field support) — core.aoi.loadCrimesCsv in the worker
- * remains the authoritative parser, same two-layer split as the desktop app.
+ * Fast client-side pre-check before spinning up Pyodide. Handles double-quoted
+ * fields (embedded commas, "" escapes) but is line-based — a quoted field
+ * spanning newlines is left to core.aoi.loadCrimesCsv in the worker, which
+ * remains the authoritative parser.
  */
 export function preflightCrimesCsv(
   csvText: string,

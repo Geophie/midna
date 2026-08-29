@@ -17,6 +17,17 @@ describe("parseCrimePoints", () => {
     expect(points).toEqual([{ lat: 33.76, lon: -84.38 }]);
   });
 
+  it("parses rows with quoted fields containing commas before the coordinates", () => {
+    const csv =
+      'ID,Location,Latitude,Longitude\n' +
+      '1,"Alley near 1017 W Gage Ave, Los Angeles, CA",33.98,-118.29\n' +
+      '2,"2500 block of W Vernon Ave, LA, CA",34.00,-118.32\n';
+    expect(parseCrimePoints(csv, "Latitude", "Longitude")).toEqual([
+      { lat: 33.98, lon: -118.29 },
+      { lat: 34.0, lon: -118.32 },
+    ]);
+  });
+
   it("returns empty for missing columns", () => {
     const csv = "Lat,Lon\n33.75,-84.39\n";
     expect(parseCrimePoints(csv, "Latitude", "Longitude")).toEqual([]);
