@@ -92,6 +92,20 @@ export function AtlantaNotice() {
             </div>
 
             <div className="atlanta-notice-scroll min-h-0 flex-1 space-y-5 overflow-x-hidden overflow-y-auto px-5 py-6 text-sm leading-6 sm:px-7 sm:text-base sm:leading-7">
+              <p>
+                {content.leadParagraph.before}
+                <strong>{content.leadParagraph.title}</strong>
+                {content.leadParagraph.between}
+                <a
+                  href={content.leadParagraph.doiUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-2 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                >
+                  {content.leadParagraph.doiUrl}
+                </a>
+                {content.leadParagraph.after}
+              </p>
               {content.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
 
               <section className="space-y-3">

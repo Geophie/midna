@@ -227,16 +227,22 @@ async def run(params, progress_cb):
             dem_seen = True
             clipped_path = weights.clipDemToAoi(layer["path"], aoi_gdf)
             dem_values = weights.computeDemCellMeans(scored_gdf, clipped_path)
+            # Strict key access, not layer.get(k, default): the browser LayerSpec
+            # always populates every environmental field (validated client-side
+            # before the run — see src/lib/validateEnvWeights.ts), so a missing
+            # key here means broken parameter propagation and must fail loudly
+            # rather than silently substituting a default the user never chose.
+            # weights.py keeps its own defaults for direct/API callers.
             scored_gdf = weights.applyDemWeights(
                 scored_gdf,
                 dem_values,
-                pianuraMin=layer.get("pianuraMin", 0.0),
-                collinaMin=layer.get("collinaMin", 250.0),
-                montagnaMin=layer.get("montagnaMin", 350.0),
-                lowWeight=layer.get("lowWeight", 0.4),
-                midWeight=layer.get("midWeight", 0.8),
-                highWeight=layer.get("highWeight", 0.0),
-                nodataWeight=layer.get("nodataWeight", 0.0),
+                pianuraMin=layer["pianuraMin"],
+                collinaMin=layer["collinaMin"],
+                montagnaMin=layer["montagnaMin"],
+                lowWeight=layer["lowWeight"],
+                midWeight=layer["midWeight"],
+                highWeight=layer["highWeight"],
+                nodataWeight=layer["nodataWeight"],
             )
             scored_gdf = scored_gdf.rename(columns={"w_dem": col_name})
             # Diagnostic parity with the desktop app's per-layer debug log
@@ -256,27 +262,31 @@ async def run(params, progress_cb):
         else:
             layer_gdf = _load_geodata(layer["path"], params["lat_col"], params["lon_col"],
                                        params["input_crs"], params["analysis_crs"])
+            # Strict key access (see the DEM branch above): intersectWeight /
+            # noIntersectWeight are always present on a browser LayerSpec and
+            # validated client-side; a missing key is a propagation bug, not a
+            # cue to fall back to a default.
+            # float(...) is still required: pyodide.toPy() sends a whole-number
+            # JS value (e.g. 1) as a Python int, which locks the pandas column
+            # to int64 on first assignment in applyIntersectionLayer — the other
+            # weight then fails to fit if it's a decimal (pandas LossySetitemError).
             if layer["type"] == "exclusion":
-                # float(...) is required here: pyodide.toPy() sends a whole-number
-                # JS value (e.g. 1) as a Python int, which locks the pandas column
-                # to int64 on first assignment in applyIntersectionLayer — the other
-                # weight then fails to fit if it's a decimal (pandas LossySetitemError).
-                intersect_weight = float(layer.get("intersectWeight", 0.0))
+                intersect_weight = float(layer["intersectWeight"])
                 scored_gdf = weights.applyExclusionLayer(
                     scored_gdf,
                     layer_gdf,
                     col_name,
                     intersectWeight=intersect_weight,
-                    noIntersectWeight=float(layer.get("noIntersectWeight", 1.0)),
+                    noIntersectWeight=float(layer["noIntersectWeight"]),
                 )
             else:
-                intersect_weight = float(layer.get("intersectWeight", 1.0))
+                intersect_weight = float(layer["intersectWeight"])
                 scored_gdf = weights.applyInclusionLayer(
                     scored_gdf,
                     layer_gdf,
                     col_name,
                     intersectWeight=intersect_weight,
-                    noIntersectWeight=float(layer.get("noIntersectWeight", 0.0)),
+                    noIntersectWeight=float(layer["noIntersectWeight"]),
                 )
             # Diagnostic parity with the desktop app's "{type} layer '{name}':
             # N/M cells" debug log (app_dpg.py ~1112-1118).

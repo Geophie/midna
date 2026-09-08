@@ -14,6 +14,7 @@ import { HelpTab } from "@/components/tabs/HelpTab";
 import type { TabDef } from "@/components/ui/TabNav";
 import { getPyodideApi } from "@/lib/pyodideClient";
 import { paramsSchema } from "@/lib/paramsSchema";
+import { validateEnvWeights } from "@/lib/validateEnvWeights";
 import { useT } from "@/lib/i18n";
 import { useAppStore } from "@/lib/store";
 import { MapPanel } from "@/components/MapPanel/MapPanel";
@@ -69,6 +70,20 @@ export default function Home() {
       return;
     }
 
+    const validLayers = layers
+      .map((l) => (l.layer.type === "dem" ? { ...l.layer, fileBytes: getPayload(l.id) } : l.layer))
+      .filter((l) => l.enabled && (l.type === "dem" ? l.fileBytes.length > 0 : l.files.length > 0));
+
+    // Structural check before booting Pyodide: every environmental weight /
+    // threshold must be a finite number (rejects missing / blank / non-numeric /
+    // NaN / ±Infinity). Any finite value — negative, zero, or > 1 — is accepted
+    // as-is; the pipeline then reads each field with strict key access.
+    const weightErrorKey = validateEnvWeights(validLayers);
+    if (weightErrorKey) {
+      alert(t(weightErrorKey));
+      return;
+    }
+
     reset();
     setStatus("loading-engine");
 
@@ -79,10 +94,6 @@ export default function Home() {
         setProgress(frac, stage);
         appendLog(stage, frac);
       });
-
-      const validLayers = layers
-        .map((l) => (l.layer.type === "dem" ? { ...l.layer, fileBytes: getPayload(l.id) } : l.layer))
-        .filter((l) => l.enabled && (l.type === "dem" ? l.fileBytes.length > 0 : l.files.length > 0));
 
       console.log("[run] params", params);
       console.log("[run] layers", validLayers);

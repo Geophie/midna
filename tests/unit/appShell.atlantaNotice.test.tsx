@@ -15,6 +15,7 @@ vi.mock("@/components/tabs/HelpTab", () => ({ HelpTab: () => <div>Help</div> }))
 import { AppShell } from "@/components/AppShell";
 import Home from "@/app/page";
 import { STRINGS } from "@/lib/i18n";
+import { ATLANTA_DOI_URL, ATLANTA_PAPER_TITLE } from "@/lib/atlantaNotice";
 import { useAppStore } from "@/lib/store";
 
 const onTabChange = vi.fn();
@@ -122,6 +123,34 @@ describe("Atlanta published-results notice", () => {
     expect(screen.getByRole("dialog", { name: "Avviso relativo ai risultati pubblicati per il caso studio di Atlanta" }).textContent).toContain("2,56%");
     expect(screen.getByRole("button", { name: STRINGS.it.atlanta_notice_button_aria }).isConnected).toBe(true);
     expect(screen.getByRole("button", { name: STRINGS.it.atlanta_notice_acknowledge }).textContent).toBe("Ho capito");
+  });
+
+  it("renders the paper title in <strong> and the DOI as a keyboard-focusable new-tab link (EN and IT)", () => {
+    renderShell();
+    fireEvent.click(screen.getByRole("button", { name: STRINGS.en.atlanta_notice_button_aria }));
+
+    const assertMarkup = () => {
+      const strong = screen.getByText(ATLANTA_PAPER_TITLE);
+      expect(strong.tagName).toBe("STRONG");
+
+      const link = screen.getByRole("link", { name: ATLANTA_DOI_URL });
+      expect(link.tagName).toBe("A");
+      expect(link.getAttribute("href")).toBe("https://doi.org/10.1186/s40163-026-00278-w");
+      expect(link.textContent).toBe("https://doi.org/10.1186/s40163-026-00278-w");
+      expect(link.getAttribute("target")).toBe("_blank");
+      expect(link.getAttribute("rel")).toContain("noopener noreferrer");
+    };
+
+    assertMarkup();
+    expect(screen.getByRole("dialog").textContent).toContain(
+      `review of the study "${ATLANTA_PAPER_TITLE}" published in Crime Science, Springer Nature (${ATLANTA_DOI_URL}) identified an error`,
+    );
+
+    act(() => useAppStore.getState().setLang("it"));
+    assertMarkup();
+    expect(screen.getByRole("dialog").textContent).toContain(
+      `pubblicazione dello studio "${ATLANTA_PAPER_TITLE}", pubblicato su Crime Science, Springer Nature (${ATLANTA_DOI_URL}), ha individuato`,
+    );
   });
 
   it("does not call runAnalysis when the notice opens or closes", () => {

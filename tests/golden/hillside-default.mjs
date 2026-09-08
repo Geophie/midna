@@ -69,11 +69,14 @@ base = dict(
 )
 layer = dict(
     type="dem", name="dem", path="/constant-275.tif",
-    pianuraMin=0.0, montagnaMin=350.0,
+    pianuraMin=0.0, collinaMin=250.0, montagnaMin=350.0,
     lowWeight=0.4, midWeight=0.8, highWeight=1.0, nodataWeight=1.0,
 )
 
-# Omitting collinaMin deliberately exercises the pipeline's current fallback.
+# The browser LayerSpec always carries every DEM field and the pipeline now
+# reads them with strict key access, so this passes collinaMin explicitly.
+# 275 m sits in [250, 350) -> midWeight (0.8); raising the boundary to 300 m
+# drops the same cell to [0, 300) -> lowWeight (0.4).
 at_default = await pipeline.run(dict(base, layers=[layer]), no_cancel)
 at_300 = await pipeline.run(dict(base, layers=[dict(layer, collinaMin=300.0)]), no_cancel)
 

@@ -79,6 +79,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     error_grid_cells_positive: "Il numero di celle deve essere positivo.",
     error_rossmo_params: "Parametri della formula di Rossmo non validi (f, g, k o B).",
     error_hub_dist_threshold: "La soglia outlier deve essere positiva.",
+    error_env_weight_invalid: "Ogni peso o soglia ambientale deve essere un numero valido (sono ammessi valori negativi e maggiori di 1; non sono ammessi campi vuoti, NaN o infinito).",
 
     // Parametri tab
     param_engine_label: "Motore di calcolo",
@@ -140,6 +141,8 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     terrain_nodata: "Nodata",
     weight_intersect: "Peso intersezione",
     weight_no_intersect: "Peso non-intersezione",
+    vector_weight_help:
+      "I pesi modificano relativamente la priorità delle celle. Un peso superiore a 1 può essere utilizzato per aumentare la priorità delle aree interessate rispetto a quelle con peso inferiore, concentrando maggiormente la ricerca in tali zone.",
 
     // Output tab
     result_grid_info: "Reticolo",
@@ -165,7 +168,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     result_eligible_hit_score: "Hit Score sul dominio eleggibile",
     result_eligible_area: "Area eleggibile",
     eval_eligible_help:
-      "L'Hit Score sull'intera AOI considera l'intera griglia di analisi. L'Hit Score sul dominio eleggibile considera solo le celle che rimangono ammissibili dopo le esclusioni ambientali. Un Hit Score sull'intera AOI più basso può in parte riflettere la contrazione del dominio piuttosto che un migliore posizionamento.",
+      "L'Hit Score sull'intera AOI considera l'intera griglia di analisi. L'Hit Score sul dominio eleggibile considera solo le celle che rimangono utilizzabili dopo le esclusioni ambientali. Un Hit Score sull'intera AOI più basso può in parte riflettere la contrazione del dominio piuttosto che un migliore posizionamento. L'Area Eleggibile indica la proporzione dell'area totale di analisi che rimane utilizzabile dopo l'applicazione delle esclusioni ambientali.",
     error_prefix: "Errore: {label}",
     no_result_yet: "Nessun risultato ancora.",
     results_summary: "{crimes} reati usati {outliersClause}— griglia di {cells} celle, B = {b}.",
@@ -380,6 +383,8 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     terrain_nodata: "NoData",
     weight_intersect: "Intersection weight",
     weight_no_intersect: "Non-intersection weight",
+    vector_weight_help:
+      "Weights modify cell priority relatively. A weight greater than 1 can be used to increase the priority of affected areas relative to areas with lower weights, focusing the search more strongly on those zones.",
 
     // Output tab
     result_grid_info: "Grid",
@@ -405,7 +410,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     result_eligible_hit_score: "Eligible-domain Hit Score",
     result_eligible_area: "Eligible area",
     eval_eligible_help:
-      "The full-AOI Hit Score uses the entire analysis grid. The eligible-domain Hit Score considers only cells that remain eligible after environmental hard exclusions. A lower full-AOI Hit Score can partly reflect domain contraction rather than better ranking.",
+      "The full-AOI Hit Score uses the entire analysis grid. The eligible-domain Hit Score considers only cells that remain eligible after environmental hard exclusions. A lower full-AOI Hit Score can partly reflect domain contraction rather than better ranking. The Eligible Area indicates the proportion of the total analysis area that remains eligible after environmental hard exclusions.",
     error_prefix: "Error: {label}",
     no_result_yet: "No results yet.",
     results_summary: "{crimes} crimes used {outliersClause}— grid of {cells} cells, B = {b}.",
@@ -526,6 +531,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     error_grid_cells_positive: "The number of cells must be positive.",
     error_rossmo_params: "Invalid Rossmo formula parameters (f, g, k or B).",
     error_hub_dist_threshold: "The outlier threshold must be positive.",
+    error_env_weight_invalid: "Every environmental weight or threshold must be a valid number (negative values and values greater than 1 are allowed; blank fields, NaN and infinity are not).",
   },
 };
 

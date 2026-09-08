@@ -6,7 +6,7 @@ import { useAppStore, type LayerEntry } from "@/lib/store";
 import type { DemLayerSpec, VectorLayerSpec } from "@/workers/pyodide.worker";
 import { buildShapefileBundle } from "@/lib/shapefileBundle";
 import { readFileBytes } from "@/lib/readFileBytes";
-import { parseLocaleFloat } from "@/lib/parseLocaleFloat";
+import { parseWeightInput } from "@/lib/parseWeightInput";
 import { setPayload, deletePayload } from "@/lib/binaryPayloadStore";
 import { useT } from "@/lib/i18n";
 import { useState } from "react";
@@ -226,7 +226,7 @@ function DemFields({ id, layer }: { id: string; layer: DemLayerSpec }) {
   const num =
     (key: keyof DemLayerSpec) =>
     (e: React.ChangeEvent<HTMLInputElement>) =>
-      updateLayer(id, { [key]: parseLocaleFloat(e.target.value) } as Partial<DemLayerSpec>);
+      updateLayer(id, { [key]: parseWeightInput(e.target.value) } as Partial<DemLayerSpec>);
 
   return (
     <div className="grid grid-cols-1 gap-x-4 gap-y-3 text-sm sm:grid-cols-[1fr_1fr]">
@@ -317,30 +317,33 @@ function VectorFields({ id, layer }: { id: string; layer: VectorLayerSpec }) {
   const num =
     (key: keyof VectorLayerSpec) =>
     (e: React.ChangeEvent<HTMLInputElement>) =>
-      updateLayer(id, { [key]: parseLocaleFloat(e.target.value) } as Partial<VectorLayerSpec>);
+      updateLayer(id, { [key]: parseWeightInput(e.target.value) } as Partial<VectorLayerSpec>);
 
   return (
-    <div className="grid grid-cols-2 gap-3 text-sm">
-      <label className="flex flex-col gap-1">
-        {t("weight_intersect")}
-        <input
-          type="text"
-          inputMode="decimal"
-          className={inputClass}
-          defaultValue={layer.intersectWeight}
-          onChange={num("intersectWeight")}
-        />
-      </label>
-      <label className="flex flex-col gap-1">
-        {t("weight_no_intersect")}
-        <input
-          type="text"
-          inputMode="decimal"
-          className={inputClass}
-          defaultValue={layer.noIntersectWeight}
-          onChange={num("noIntersectWeight")}
-        />
-      </label>
+    <div className="flex flex-col gap-2">
+      <div className="grid grid-cols-2 gap-3 text-sm">
+        <label className="flex flex-col gap-1">
+          {t("weight_intersect")}
+          <input
+            type="text"
+            inputMode="decimal"
+            className={inputClass}
+            defaultValue={layer.intersectWeight}
+            onChange={num("intersectWeight")}
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          {t("weight_no_intersect")}
+          <input
+            type="text"
+            inputMode="decimal"
+            className={inputClass}
+            defaultValue={layer.noIntersectWeight}
+            onChange={num("noIntersectWeight")}
+          />
+        </label>
+      </div>
+      <p className="text-xs text-foreground-muted">{t("vector_weight_help")}</p>
     </div>
   );
 }

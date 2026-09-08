@@ -1,7 +1,27 @@
 import type { Lang } from "@/lib/store";
 
+/** Exact, shared strings for the cited paper so EN/IT can't drift. */
+export const ATLANTA_PAPER_TITLE =
+  "Enhancing Rossmo’s criminal geographic targeting model through environmental and land-use spatial layers: a case study of the Atlanta homicides (1979–1981)";
+export const ATLANTA_DOI_URL = "https://doi.org/10.1186/s40163-026-00278-w";
+
+/**
+ * The opening paragraph, split into plain-text segments so the component can
+ * render the paper title in <strong> and the DOI as a real <a> without putting
+ * markup in these strings. Concatenating before + title + between + doiUrl +
+ * after reproduces the original sentence verbatim.
+ */
+export interface AtlantaLeadParagraph {
+  before: string;
+  title: string;
+  between: string;
+  doiUrl: string;
+  after: string;
+}
+
 export interface AtlantaNoticeContent {
   title: string;
+  leadParagraph: AtlantaLeadParagraph;
   paragraphs: string[];
   classesIntro: string;
   classes: { label: string; value: string }[];
@@ -15,8 +35,14 @@ export interface AtlantaNoticeContent {
 export const ATLANTA_NOTICE: Record<Lang, AtlantaNoticeContent> = {
   en: {
     title: "Notice regarding the published Atlanta results",
+    leadParagraph: {
+      before: "A post-publication reproducibility review of the study \"",
+      title: ATLANTA_PAPER_TITLE,
+      between: "\" published in Crime Science, Springer Nature (",
+      doiUrl: ATLANTA_DOI_URL,
+      after: ") identified an error in the legacy preprocessing workflow used for the environmental enhancement reported in the Atlanta case study.",
+    },
     paragraphs: [
-      "A post-publication reproducibility review identified an error in the legacy preprocessing workflow used for the environmental enhancement reported in the Atlanta case study.",
       "The issue affected the DEM integration step: the legacy workflow relied on positional CSV handling and incorrectly used Latitude instead of the intended DEM_weight. A north–south row-order mismatch was also identified in the legacy DEM-processing files.",
       "Consequently, the final enhanced results were slightly altered: latitude effectively acted as a constant in the calculation, while the DEM did not enter the calculation as intended.",
       "The corresponding author has formally reported the error to the journal, and the correction process is currently underway.",
@@ -49,8 +75,14 @@ export const ATLANTA_NOTICE: Record<Lang, AtlantaNoticeContent> = {
   },
   it: {
     title: "Avviso relativo ai risultati pubblicati per il caso studio di Atlanta",
+    leadParagraph: {
+      before: "Una revisione di riproducibilità condotta successivamente alla pubblicazione dello studio \"",
+      title: ATLANTA_PAPER_TITLE,
+      between: "\", pubblicato su Crime Science, Springer Nature (",
+      doiUrl: ATLANTA_DOI_URL,
+      after: "), ha individuato un errore nella precedente procedura di pre-elaborazione utilizzata per l’integrazione ambientale nel caso di studio di Atlanta.",
+    },
     paragraphs: [
-      "Una revisione di riproducibilità condotta successivamente alla pubblicazione ha individuato un errore nella precedente procedura di pre-elaborazione utilizzata per l’integrazione ambientale nel caso di studio di Atlanta.",
       "Il problema riguardava la fase di integrazione del modello digitale di elevazione (DEM). La procedura precedente si basava su una gestione posizionale dei file CSV e utilizzava erroneamente il campo Latitude al posto del valore previsto DEM_weight. È stata inoltre individuata un’incongruenza nell’ordinamento nord–sud delle righe nei file utilizzati per l’elaborazione del DEM.",
       "Di conseguenza, i risultati finali del modello enhanced risultavano leggermente alterati: la latitudine finiva per agire come un fattore costante nel calcolo, mentre il DEM non contribuiva al modello nel modo previsto.",
       "L’autrice corrispondente ha formalmente segnalato l’errore alla rivista e la procedura di correzione è attualmente in corso.",
