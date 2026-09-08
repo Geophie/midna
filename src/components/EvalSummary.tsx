@@ -16,29 +16,65 @@ export function EvalSummary({
   label,
   gini,
   evalResult,
+  showEligible = false,
 }: {
   label: string;
   gini: number | null;
   evalResult: EvalResult | null;
+  // When set (enhanced model), splits Hit Score into full-AOI vs
+  // eligible-domain and shows the eligible-area fraction — audit Finding 3.
+  showEligible?: boolean;
 }) {
   const t = useT();
+  const invalid = evalResult && evalResult.status !== "valid";
   return (
     <div className="flex flex-col gap-2">
       <h3 className="text-sm font-medium">{label}</h3>
+      {invalid && (
+        <p className="text-sm text-red-600 dark:text-red-400">
+          ⚠ {t(evalResult.status === "out_of_domain" ? "eval_status_out_of_domain" : "eval_status_anchor_excluded")}
+        </p>
+      )}
       <div className="flex flex-col gap-1">
         <StatRow
-          label={t("result_hit_score")}
-          value={evalResult ? `${evalResult.hit_score_pct.toFixed(2)}%` : "—"}
+          label={t(showEligible ? "result_hit_score_full_aoi" : "result_hit_score")}
+          value={evalResult && evalResult.hit_score_pct != null ? `${evalResult.hit_score_pct.toFixed(2)}%` : "—"}
         />
+        {showEligible && (
+          <>
+            <StatRow
+              label={t("result_eligible_hit_score")}
+              value={
+                evalResult && evalResult.eligible_hit_score_pct != null
+                  ? `${evalResult.eligible_hit_score_pct.toFixed(2)}%`
+                  : "—"
+              }
+            />
+            <StatRow
+              label={t("result_eligible_area")}
+              value={
+                evalResult && evalResult.eligible_area_fraction != null
+                  ? `${(evalResult.eligible_area_fraction * 100).toFixed(1)}%`
+                  : "—"
+              }
+            />
+          </>
+        )}
         <StatRow
           label={t("result_search_area")}
-          value={evalResult ? `${evalResult.search_area_km2.toFixed(2)} km²` : "—"}
+          value={evalResult && evalResult.search_area_km2 != null ? `${evalResult.search_area_km2.toFixed(2)} km²` : "—"}
         />
         <StatRow label={t("result_gini")} value={gini !== null ? `${(gini * 100).toFixed(2)}%` : "—"} />
         <StatRow
           label={t("result_distance")}
-          value={evalResult ? `${(evalResult.home_guess_distance_m / 1000).toFixed(2)} km` : "—"}
+          value={evalResult && evalResult.home_guess_distance_m != null ? `${(evalResult.home_guess_distance_m / 1000).toFixed(2)} km` : "—"}
         />
+        {evalResult && evalResult.status === "out_of_domain" && (
+          <StatRow
+            label={t("result_nearest_cell_distance")}
+            value={`${(evalResult.distance_to_nearest_cell_m / 1000).toFixed(2)} km`}
+          />
+        )}
       </div>
     </div>
   );

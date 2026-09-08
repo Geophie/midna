@@ -25,6 +25,12 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     lang_toggle_aria_to_en: "Cambia lingua in inglese",
     lang_toggle_aria_to_it: "Cambia lingua in italiano",
     lang_toggle_title: "Cambia lingua",
+    atlanta_notice_button_aria: "Avviso relativo ai risultati pubblicati per il caso studio di Atlanta",
+    atlanta_notice_close_aria: "Chiudi l’avviso sui risultati di Atlanta",
+    atlanta_notice_acknowledge: "Ho capito",
+    github_repository_aria: "Apri MIDNA su GitHub",
+    github_star_cta: "Se trovi MIDNA utile, puoi supportare il progetto lasciando una star alla repository su GitHub.",
+    github_star_button: "Metti una star su GitHub",
 
     // Input tab
     input_crimes_card_title: "Dati reato",
@@ -83,6 +89,9 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     lon_col: "Colonna longitudine",
     crs_input: "CRS del CSV di input (coordinate sorgente)",
     crs_output: "CRS di analisi (output)",
+    crs_geographic_warning_title: "CRS di analisi geografico",
+    crs_geographic_warning_body:
+      "Il CRS di analisi selezionato è geografico e utilizza unità angolari. I calcoli delle distanze CGT di MIDNA e la zona buffer automatica B operano sulle coordinate del CRS di analisi, quindi l'uso di un CRS geografico può influire sulle relazioni di distanza, su B, sul ranking delle celle e sul profilo geografico risultante. Per una normale analisi basata sulle distanze, valuta l'uso di un CRS proiettato appropriato con unità lineari.",
     param_cells_x: "Celle X",
     param_cells_y: "Celle Y",
     param_aoi_padding: "Padding bounding box esterna (% per lato)",
@@ -149,6 +158,14 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     result_search_area: "Area di ricerca",
     result_gini: "Coefficiente di Gini",
     result_distance: "Distanza home guess",
+    result_nearest_cell_distance: "Distanza dalla cella più vicina",
+    eval_status_out_of_domain: "Anchor point noto fuori dalla griglia analizzata",
+    eval_status_anchor_excluded: "Punto noto in un'area esclusa da un vincolo ambientale",
+    result_hit_score_full_aoi: "Hit Score sull'intera AOI",
+    result_eligible_hit_score: "Hit Score sul dominio eleggibile",
+    result_eligible_area: "Area eleggibile",
+    eval_eligible_help:
+      "L'Hit Score sull'intera AOI considera l'intera griglia di analisi. L'Hit Score sul dominio eleggibile considera solo le celle che rimangono ammissibili dopo le esclusioni ambientali. Un Hit Score sull'intera AOI più basso può in parte riflettere la contrazione del dominio piuttosto che un migliore posizionamento.",
     error_prefix: "Errore: {label}",
     no_result_yet: "Nessun risultato ancora.",
     results_summary: "{crimes} reati usati {outliersClause}— griglia di {cells} celle, B = {b}.",
@@ -203,7 +220,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
       "La griglia definisce il numero di celle in cui viene suddivisa l'area (più celle = maggiore risoluzione ma calcolo più lento; disabilitata se è stato caricato un reticolo personalizzato). Il campo Padding bounding box aggiunge un margine percentuale per lato attorno all'area di studio generata automaticamente, così la griglia non termina esattamente sul crimine più esterno (default 10%; ignorato con reticolo personalizzato). I parametri f, g e k della formula di Rossmo si impostano qui; B può essere calcolato automaticamente dai dati oppure inserito manualmente. Puoi anche disattivare la normalizzazione dello score [0–100] e/o il calcolo del coefficiente di Gini.",
     help_layers_title: "Scheda Layers",
     help_layers_1:
-      "I layer aggiuntivi modificano la superficie di probabilità moltiplicando lo score di ogni cella per un peso. Un layer DEM (elevazione) assegna pesi diversi in base a tre fasce di altitudine (pianura 0–220 m, collina 220–350 m, montagna oltre 350 m) più un peso per le celle senza dato. I layer di inclusione/esclusione sono poligoni (es. parchi, quartieri residenziali, cimiteri): assegnano un peso alle celle che intersecano la geometria e un peso diverso a quelle che non la intersecano — usali per escludere zone improbabili (es. laghi, aree industriali) o per includere solo zone plausibili (es. aree residenziali). Ogni layer può essere disattivato temporaneamente senza rimuoverlo, tramite la casella di spunta sulla sua scheda.",
+      "I layer aggiuntivi modificano la superficie di probabilità moltiplicando lo score di ogni cella per un peso. Un layer DEM (elevazione) assegna pesi diversi in base a tre fasce di altitudine (pianura: 0 ≤ elevazione < 250 m; collina: 250 ≤ elevazione < 350 m; montagna: ≥350 m) più un peso per le celle senza dato. I layer di inclusione/esclusione sono poligoni (es. parchi, quartieri residenziali, cimiteri): assegnano un peso alle celle che intersecano la geometria e un peso diverso a quelle che non la intersecano — usali per escludere zone improbabili (es. laghi, aree industriali) o per includere solo zone plausibili (es. aree residenziali). Ogni layer può essere disattivato temporaneamente senza rimuoverlo, tramite la casella di spunta sulla sua scheda.",
     help_layers_2:
       "Attenzione, layer DEM su griglie grandi: il calcolo dell'elevazione media per cella richiede un'operazione raster separata per ogni cella della griglia, quindi il tempo cresce linearmente col numero di celle — con il reticolo predefinito (200×200 = 40.000 celle) un layer DEM può richiedere diversi minuti nel browser.",
     help_layers_3:
@@ -236,6 +253,9 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     map_loading: "Caricamento mappa…",
     map_preview_crs_unknown:
       "Anteprima crimini non disponibile: CRS di input \"{crs}\" non riconosciuto.",
+    map_cell_id: "ID cella",
+    map_cell_score: "Score",
+    map_zoom_to_inspect_cells: "Aumenta lo zoom per ispezionare le singole celle",
     heatmap_opacity_label: "Opacità heatmap",
     score_threshold_label: "Soglia score: {value}",
     layer_toggle_crimes: "Crimini",
@@ -264,6 +284,12 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     lang_toggle_aria_to_en: "Switch language to English",
     lang_toggle_aria_to_it: "Switch language to Italian",
     lang_toggle_title: "Change language",
+    atlanta_notice_button_aria: "Notice regarding the published Atlanta results",
+    atlanta_notice_close_aria: "Close the Atlanta results notice",
+    atlanta_notice_acknowledge: "I understand",
+    github_repository_aria: "Open MIDNA on GitHub",
+    github_star_cta: "If you find MIDNA useful, consider supporting the project by giving the repository a star on GitHub.",
+    github_star_button: "Star MIDNA on GitHub",
 
     input_crimes_card_title: "Crime data",
     input_anchor_card_title: "Anchor point (optional)",
@@ -303,6 +329,9 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     lon_col: "Longitude column",
     crs_input: "Input CSV CRS (source coordinates)",
     crs_output: "Analysis CRS (output)",
+    crs_geographic_warning_title: "Geographic analysis CRS",
+    crs_geographic_warning_body:
+      "The selected analysis CRS is geographic and uses angular units. MIDNA's CGT distance calculations and automatic buffer zone B operate on coordinates in the analysis CRS, so using a geographic CRS can affect distance relationships, B, cell rankings, and the resulting geographic profile. For standard distance-based analysis, consider using an appropriate projected CRS with linear units.",
     param_cells_x: "Cells X",
     param_cells_y: "Cells Y",
     param_aoi_padding: "Outer bounding-box padding (% per side)",
@@ -369,6 +398,14 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     result_search_area: "Search area",
     result_gini: "Gini coefficient",
     result_distance: "Home guess distance",
+    result_nearest_cell_distance: "Distance to nearest grid cell",
+    eval_status_out_of_domain: "Known anchor outside the analysis grid",
+    eval_status_anchor_excluded: "Known anchor in an environmentally excluded area",
+    result_hit_score_full_aoi: "Full-AOI Hit Score",
+    result_eligible_hit_score: "Eligible-domain Hit Score",
+    result_eligible_area: "Eligible area",
+    eval_eligible_help:
+      "The full-AOI Hit Score uses the entire analysis grid. The eligible-domain Hit Score considers only cells that remain eligible after environmental hard exclusions. A lower full-AOI Hit Score can partly reflect domain contraction rather than better ranking.",
     error_prefix: "Error: {label}",
     no_result_yet: "No results yet.",
     results_summary: "{crimes} crimes used {outliersClause}— grid of {cells} cells, B = {b}.",
@@ -422,7 +459,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
       "The grid defines how many cells the area is divided into (more cells = higher resolution but slower computation; disabled if a custom grid has been loaded). The Outer bounding-box padding field adds a percentage margin per side around the automatically generated area of interest, so the grid does not end exactly on the outermost crime (default 10%; ignored with a custom grid). The f, g and k parameters of the Rossmo formula are set here; B can be computed automatically from the data or entered manually. You can also turn off score normalization [0–100] and/or the Gini coefficient computation.",
     help_layers_title: "Layers tab",
     help_layers_1:
-      "Additional layers modify the probability surface by multiplying each cell's score by a weight. A DEM (elevation) layer assigns different weights based on three altitude bands (flatland 0–220 m, hillside 220–350 m, mountain above 350 m) plus a weight for cells with no data. Inclusion/exclusion layers are polygons (e.g. parks, residential neighborhoods, cemeteries): they assign one weight to cells that intersect the geometry and a different weight to those that don't — use them to exclude unlikely areas (e.g. lakes, industrial zones) or to include only plausible ones (e.g. residential areas). Each layer can be temporarily disabled without removing it, via the checkbox on its card.",
+      "Additional layers modify the probability surface by multiplying each cell's score by a weight. A DEM (elevation) layer assigns different weights based on three altitude bands (flatland: 0 ≤ elevation < 250 m; hillside: 250 ≤ elevation < 350 m; mountain: ≥350 m) plus a weight for cells with no data. Inclusion/exclusion layers are polygons (e.g. parks, residential neighborhoods, cemeteries): they assign one weight to cells that intersect the geometry and a different weight to those that don't — use them to exclude unlikely areas (e.g. lakes, industrial zones) or to include only plausible ones (e.g. residential areas). Each layer can be temporarily disabled without removing it, via the checkbox on its card.",
     help_layers_2:
       "Careful with DEM layers on large grids: computing the average elevation per cell requires a separate raster operation for every grid cell, so the time grows linearly with the number of cells — with the default grid (200×200 = 40,000 cells) a DEM layer can take several minutes in the browser.",
     help_layers_3:
@@ -455,6 +492,9 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     map_loading: "Loading map…",
     map_preview_crs_unknown:
       "Crime preview unavailable — input CRS \"{crs}\" not recognized.",
+    map_cell_id: "Cell ID",
+    map_cell_score: "Score",
+    map_zoom_to_inspect_cells: "Zoom in to inspect individual cells",
     heatmap_opacity_label: "Heatmap opacity",
     score_threshold_label: "Score threshold: {value}",
     layer_toggle_crimes: "Crimes",

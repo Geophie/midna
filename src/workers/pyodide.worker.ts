@@ -36,6 +36,7 @@ const CORE_FILES = [
   "normalize.py",
   "ranking.py",
   "evaluation.py",
+  "crs.py",
   "stats.py",
 ] as const;
 
@@ -179,16 +180,35 @@ export interface RunParams {
   layers: LayerSpec[];
 }
 
+// Python `None` crosses the Pyodide boundary as JS `undefined`, not `null`.
+// Coerce it so `EvalResult`'s `number | null` fields are honest downstream.
+function nullifyUndefined<T extends object>(o: T | null): T | null {
+  return o && (Object.fromEntries(
+    Object.entries(o).map(([k, v]) => [k, v === undefined ? null : v]),
+  ) as T);
+}
+
 export interface EvalResult {
-  anchor_rank: number;
+  status: "valid" | "out_of_domain" | "anchor_excluded";
+  anchor_rank: number | null;
   n_cells: number;
-  hit_score_pct: number;
-  anchor_score: number;
+  hit_score_pct: number | null;
+  anchor_score: number | null;
+  // Metric distance in metres to the nearest cell footprint; present as an
+  // out-of-domain diagnostic and zero for a contained anchor.
   distance_to_nearest_cell_m: number;
-  home_guess_distance_m: number;
-  n_priority_cells: number;
-  search_area_km2: number;
+  home_guess_distance_m: number | null;
+  n_priority_cells: number | null;
+  search_area_km2: number | null;
   total_cells: number;
+  // Finding 3 — full-AOI HSP (`hit_score_pct`, unchanged) vs eligible-domain HSP.
+  // Eligible = cells with `zero_weight_applied == false`. eligible_hit_score_pct
+  // is null unless status === "valid"; eligible_area_fraction (0..1) is reported
+  // for every status.
+  eligible_hit_score_pct: number | null;
+  eligible_area_fraction: number | null;
+  eligible_cells: number;
+  eligible_area_km2: number | null;
 }
 
 export interface LorenzCurve {
@@ -228,6 +248,11 @@ export type RunOutcome =
 
 export type ProgressCallback = (frac: number, stage: string) => void;
 
+export interface CrsInspection {
+  valid: boolean;
+  isGeographic: boolean;
+}
+
 function layerExtension(fileName: string): string {
   const dot = fileName.lastIndexOf(".");
   return dot === -1 ? "" : fileName.slice(dot);
@@ -245,6 +270,20 @@ function primaryEntry(files: VectorFileEntry[]): VectorFileEntry {
 const api = {
   async warmUp(): Promise<void> {
     await getEngine();
+  },
+
+  async inspectAnalysisCrs(crs: string): Promise<CrsInspection> {
+    const { pyodide } = await getEngine();
+    const result = await pyodide.runPythonAsync(`
+import json
+from core.crs import inspect_analysis_crs
+json.dumps(inspect_analysis_crs(${JSON.stringify(crs)}))
+`);
+    const parsed = JSON.parse(String(result)) as {
+      valid: boolean;
+      is_geographic: boolean;
+    };
+    return { valid: parsed.valid, isGeographic: parsed.is_geographic };
   },
 
   requestCancel(): void {
@@ -401,8 +440,8 @@ const api = {
         enhancedGini: result.enhanced_gini,
         baselineLorenz: result.baseline_lorenz,
         enhancedLorenz: result.enhanced_lorenz,
-        baselineEval: result.baseline_eval,
-        enhancedEval: result.enhanced_eval,
+        baselineEval: nullifyUndefined(result.baseline_eval),
+        enhancedEval: nullifyUndefined(result.enhanced_eval),
         boundaryDiagnostics: result.boundary_diagnostics
           ? {
               peakRaw: result.boundary_diagnostics.peak_raw,

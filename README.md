@@ -396,6 +396,18 @@ The application does not require a dedicated Python analysis server: the geograp
 | **Sofia Maria Russo** ([@Geophie](https://github.com/Geophie)) | Project Lead / Research | Original concept, research methodology, and authorship of the underlying scientific study and original scripts |
 | **Giacomo Butera** ([@WhtNoiz](https://github.com/WhtNoiz)) | Developer | Web application development, including the React/Next.js frontend, Pyodide/Web Worker integration, client-side geoprocessing pipeline, interactive visualization, and data export |
 
+### Independent methodological evaluation
+
+We would like to thank **Dr René Gapert, Independent Researcher**, for the independent **methodological audit/correction review** of MIDNA and for the detailed technical feedback that informed subsequent methodological and reproducibility improvements.
+
+Under matched test conditions, the review found that MIDNA's conventional Criminal Geographic Targeting (CGT) implementation agreed extremely closely with an independently implemented reference calculation and was numerically stable at the tested resolutions.
+
+The audit also identified a number of methodological and reproducibility issues concerning out-of-domain and environmentally excluded anchors, interpretation of Hit Score Percentage under hard environmental constraints, geographic CRS use, duplicate-site effects on the automatic buffer zone \(B\), Manhattan-distance orientation dependence, environmental-layer intersection semantics, Gini interpretation, tied cell ranking, buffer-zone diagnostics, and nearest-cell distance semantics.
+
+These findings informed subsequent revisions to MIDNA, including explicit anchor states, separate Full-AOI and Eligible-domain HSP reporting, eligible-area reporting, geographic-CRS warnings, clearer documentation of model sensitivities, and additional robustness and diagnostic improvements.
+
+The review establishes implementation conformance and reproducibility under the tested conditions; it does **not** constitute general predictive validation, operational certification, or evidence of predictive superiority over other geographic-profiling methods.
+
 ---
 
 ## Citation

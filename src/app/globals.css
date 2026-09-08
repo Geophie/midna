@@ -69,3 +69,22 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
+
+.atlanta-notice-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--foreground-muted) var(--background);
+}
+
+.atlanta-notice-scroll::-webkit-scrollbar {
+  width: 0.625rem;
+}
+
+.atlanta-notice-scroll::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+.atlanta-notice-scroll::-webkit-scrollbar-thumb {
+  border: 2px solid var(--background-elevated);
+  border-radius: 9999px;
+  background: var(--foreground-muted);
+}

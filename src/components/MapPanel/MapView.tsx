@@ -2,28 +2,34 @@
 
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { useEffect, useMemo, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { IoIosHome } from "react-icons/io";
 import { MapContainer, TileLayer, GeoJSON, CircleMarker, Marker, useMap } from "react-leaflet";
 import { useAppStore } from "@/lib/store";
 import { parseCrimePoints, parseAnchorPoint, parseGridOutline, type LatLon } from "@/lib/mapPoints";
-import { crsIsKnown, isWgs84 } from "@/lib/crsProject";
+import { crsIsKnown, isWgs84, toWgs84 } from "@/lib/crsProject";
 import {
   parseGridFeatureCollection,
   bandColor,
-  computeLegendBands,
   estimateBandLambda,
   isFeatureVisible,
   scoreKeyForView,
   scoreRange,
+  type GridFeature,
   type GridFeatureCollection,
   type HeatmapView,
 } from "@/lib/geoResult";
-import { Legend } from "./Legend";
 import { Toggle } from "@/components/ui/Toggle";
 import { useT } from "@/lib/i18n";
 import { computeContourBands } from "@/lib/contour";
+import {
+  canInspectCells,
+  cellInspectionDetails,
+  representativeCellMinDimensionPx,
+  reprojectGridForInspection,
+  type ScreenPoint,
+} from "@/lib/cellInspection";
 
 const HEATMAP_PANE = "heatmapPane";
 const DEFAULT_CENTER: [number, number] = [20, 0];
@@ -96,6 +102,175 @@ function ResizeSync() {
   return null;
 }
 
+interface CellHover {
+  cellId: number;
+  score: number;
+  point: ScreenPoint;
+}
+
+function InteractiveCellLayer({
+  fc,
+  visibleFeatures,
+  scoreKey,
+  minScore,
+  maxScore,
+  lambda,
+  canvasRenderer,
+  activeView,
+  threshold,
+  contouringEnabled,
+  cellsX,
+  cellsY,
+  onAvailabilityChange,
+  onHover,
+}: {
+  fc: GridFeatureCollection;
+  visibleFeatures: GridFeatureCollection["features"];
+  scoreKey: "score" | "score_enhanced";
+  minScore: number;
+  maxScore: number;
+  lambda: number;
+  canvasRenderer: L.Canvas;
+  activeView: HeatmapView;
+  threshold: number;
+  contouringEnabled: boolean;
+  cellsX: number | null;
+  cellsY: number | null;
+  onAvailabilityChange: (available: boolean) => void;
+  onHover: (hover: CellHover | null) => void;
+}) {
+  const map = useMap();
+  const [canInspect, setCanInspect] = useState(false);
+  const hoveredLayer = useRef<L.Path | null>(null);
+
+  const normalStyle = useCallback(
+    (feature: GeoJSON.Feature | undefined): L.PathOptions => {
+      const score = Number(feature?.properties?.[scoreKey] ?? 0);
+      const color = bandColor(score, minScore, maxScore, lambda);
+      return {
+        fillColor: color,
+        color,
+        weight: 1,
+        fillOpacity: 0.85,
+        opacity: 0.85,
+        renderer: canvasRenderer,
+      };
+    },
+    [canvasRenderer, lambda, maxScore, minScore, scoreKey]
+  );
+
+  const clearHover = useCallback(() => {
+    if (hoveredLayer.current) {
+      const layer = hoveredLayer.current as L.Path & { feature?: GeoJSON.Feature };
+      layer.setStyle(normalStyle(layer.feature));
+      hoveredLayer.current = null;
+    }
+    onHover(null);
+  }, [normalStyle, onHover]);
+
+  const measureAvailability = useCallback(() => {
+    const representativeSize = representativeCellMinDimensionPx(
+      fc,
+      ([longitude, latitude]) => {
+        const point = map.latLngToContainerPoint([latitude, longitude]);
+        return { x: point.x, y: point.y };
+      },
+      cellsX,
+      cellsY
+    );
+    // Readability only depends on grid geometry + current projection/zoom +
+    // contours — NOT on the score-filtered subset. Which cells are actually
+    // rendered / hoverable is governed separately by `visibleFeatures`, so
+    // moving the score-threshold slider at a fixed zoom must not flip this.
+    const next = canInspectCells(contouringEnabled, representativeSize);
+    setCanInspect(next);
+    if (!next) clearHover();
+  }, [cellsX, cellsY, clearHover, contouringEnabled, fc, map]);
+
+  useEffect(() => {
+    const initialFrame = requestAnimationFrame(measureAvailability);
+    map.on("zoomend", measureAvailability);
+    map.on("moveend", measureAvailability);
+    map.on("resize", measureAvailability);
+    return () => {
+      map.off("zoomend", measureAvailability);
+      map.off("moveend", measureAvailability);
+      map.off("resize", measureAvailability);
+      cancelAnimationFrame(initialFrame);
+      clearHover();
+      onAvailabilityChange(false);
+    };
+  }, [clearHover, map, measureAvailability, onAvailabilityChange]);
+
+  useEffect(() => {
+    onAvailabilityChange(canInspect);
+  }, [canInspect, onAvailabilityChange]);
+
+  useEffect(() => {
+    map.getContainer().style.cursor = canInspect ? "pointer" : "";
+    return () => {
+      map.getContainer().style.cursor = "";
+    };
+  }, [canInspect, map]);
+
+  useEffect(() => {
+    clearHover();
+  }, [activeView, clearHover, fc, threshold]);
+
+  const showHover = useCallback(
+    (event: L.LeafletMouseEvent) => {
+      if (!canInspect) return;
+      // Handlers are bound to the GeoJSON group, so a feature event arrives
+      // propagated: `event.target` is the group (no `.feature`), the hovered
+      // cell is `event.propagatedFrom`/`sourceTarget`.
+      const layer = (event.propagatedFrom ?? event.sourceTarget ?? event.target) as L.Path & {
+        feature?: GridFeature;
+      };
+      const feature = layer.feature;
+      if (!feature) return;
+
+      if (hoveredLayer.current && hoveredLayer.current !== layer) {
+        const previous = hoveredLayer.current as L.Path & { feature?: GeoJSON.Feature };
+        previous.setStyle(normalStyle(previous.feature));
+      }
+      layer.setStyle({ weight: 2, color: "#f8fafc", opacity: 1, fillOpacity: 0.9 });
+      hoveredLayer.current = layer;
+      const point = map.latLngToContainerPoint(event.latlng);
+      const details = cellInspectionDetails(feature, scoreKey === "score_enhanced" ? "enhanced" : "baseline");
+      onHover({ ...details, point: { x: point.x, y: point.y } });
+    },
+    [canInspect, map, normalStyle, onHover, scoreKey]
+  );
+
+  const hideHover = useCallback(
+    (event: L.LeafletMouseEvent) => {
+      const layer = (event.propagatedFrom ?? event.sourceTarget ?? event.target) as L.Path;
+      if (hoveredLayer.current !== layer) return;
+      clearHover();
+    },
+    [clearHover]
+  );
+
+  if (visibleFeatures.length === 0) return null;
+  return (
+    <GeoJSON
+      key={`heatmap-${activeView}-${threshold}`}
+      data={{ ...fc, features: visibleFeatures } as unknown as GeoJSON.GeoJsonObject}
+      pane={HEATMAP_PANE}
+      style={normalStyle}
+      eventHandlers={
+        canInspect
+          ? {
+              mouseover: showHover,
+              mouseout: hideHover,
+              click: showHover,
+            }
+          : undefined
+      }
+    />
+  );
+}
+
 function HeatmapLayer({
   fc,
   activeView,
@@ -104,6 +279,8 @@ function HeatmapLayer({
   contouringEnabled,
   cellsX,
   cellsY,
+  onAvailabilityChange,
+  onHover,
 }: {
   fc: GridFeatureCollection;
   activeView: HeatmapView;
@@ -112,6 +289,8 @@ function HeatmapLayer({
   contouringEnabled: boolean;
   cellsX: number | null;
   cellsY: number | null;
+  onAvailabilityChange: (available: boolean) => void;
+  onHover: (hover: CellHover | null) => void;
 }) {
   const canvasRenderer = useMemo(() => L.canvas({ pane: HEATMAP_PANE, padding: 0.5 }), []);
   const scoreKey = scoreKeyForView(activeView);
@@ -121,6 +300,23 @@ function HeatmapLayer({
   // this fc/scoreKey, so a cell's color means the same thing everywhere.
   const lambda = useMemo(() => estimateBandLambda(fc, scoreKey), [fc, scoreKey]);
   const isProjected = (resultAnalysisCrs ?? "EPSG:4326").trim().toUpperCase() !== "EPSG:4326";
+
+  // Projected-CRS runs serialise polygon geometry in the analysis CRS
+  // (metres/feet), which Leaflet can't place on its WGS84 map. When proj4 knows
+  // the CRS we reproject the polygons client-side — display + hit-testing only,
+  // scores/ranks/analysis geometry untouched — so cell inspection behaves the
+  // same as for a geographic CRS. Unknown CRS falls back to centroid points.
+  // Performance note: reprojects the whole grid once per (fc, crs); a per-cell
+  // memo cache is the upgrade path if a huge projected grid ever measures slow.
+  const projectedInspectFc = useMemo(() => {
+    if (!isProjected) return null;
+    const crs = (resultAnalysisCrs ?? "").trim();
+    if (!crsIsKnown(crs)) return null;
+    const reprojected = reprojectGridForInspection(fc, ([x, y]) => toWgs84(x, y, crs));
+    return reprojected.features.length > 0 ? reprojected : null;
+  }, [isProjected, resultAnalysisCrs, fc]);
+  const inspectFc = projectedInspectFc ?? fc;
+
   const contourBands = useMemo(
     () =>
       contouringEnabled && !isProjected && cellsX !== null && cellsY !== null
@@ -134,6 +330,16 @@ function HeatmapLayer({
         return isFeatureVisible(f, scoreKey, threshold);
       }),
     [fc, scoreKey, threshold]
+  );
+  // Score-filtered subset of the geometry the interactive layer actually draws
+  // (reprojected when projected, the original otherwise). Same properties as
+  // `visibleFeatures`, so `isFeatureVisible` classifies them identically.
+  const inspectVisible = useMemo(
+    () =>
+      inspectFc === fc
+        ? visibleFeatures
+        : inspectFc.features.filter((f) => isFeatureVisible(f, scoreKey, threshold)),
+    [inspectFc, fc, visibleFeatures, scoreKey, threshold]
   );
 
   if (visibleFeatures.length === 0) return null;
@@ -153,10 +359,10 @@ function HeatmapLayer({
     );
   }
 
-  if (isProjected) {
-    // The cell polygons themselves are in a projected (metric) CRS, but every
-    // feature also carries a Longitude/Latitude centroid already reprojected
-    // to EPSG:4326 by the pipeline — fall back to colored centroid points.
+  if (isProjected && !projectedInspectFc) {
+    // proj4 can't resolve this projected CRS, so there is no map-space polygon
+    // to hit-test — fall back to the WGS84 centroid points the pipeline already
+    // carries on every feature. No exact cell inspection in this case.
     return (
       <>
         {visibleFeatures.map((f) => (
@@ -179,26 +385,21 @@ function HeatmapLayer({
   }
 
   return (
-    <GeoJSON
-      key={`heatmap-${activeView}-${threshold}`}
-      data={{ ...fc, features: visibleFeatures } as unknown as GeoJSON.GeoJsonObject}
-      pane={HEATMAP_PANE}
-      style={(feature) => {
-        const score = (feature?.properties as { [k: string]: number } | undefined)?.[scoreKey] ?? 0;
-        const color = bandColor(score, minScore, maxScore, lambda);
-        return {
-          fillColor: color,
-          // A hairline stroke in the same color as the fill papers over the
-          // sub-pixel seams that otherwise appear between thousands of
-          // abutting thin grid cells on a canvas renderer (weight: 0 leaves
-          // visible gaps between rows/columns at typical zoom levels).
-          color,
-          weight: 1,
-          fillOpacity: 0.85,
-          opacity: 0.85,
-          renderer: canvasRenderer,
-        };
-      }}
+    <InteractiveCellLayer
+      fc={inspectFc}
+      visibleFeatures={inspectVisible}
+      scoreKey={scoreKey}
+      minScore={minScore}
+      maxScore={maxScore}
+      lambda={lambda}
+      canvasRenderer={canvasRenderer}
+      activeView={activeView}
+      threshold={threshold}
+      contouringEnabled={contouringEnabled}
+      cellsX={cellsX}
+      cellsY={cellsY}
+      onAvailabilityChange={onAvailabilityChange}
+      onHover={onHover}
     />
   );
 }
@@ -215,6 +416,7 @@ function FloatingCard({ children, className = "" }: { children: ReactNode; class
 
 export function MapView({ activeView }: { activeView: HeatmapView }) {
   const t = useT();
+  const lang = useAppStore((s) => s.lang);
   const csvText = useAppStore((s) => s.csvText);
   const params = useAppStore((s) => s.params);
   const disabled = useAppStore((s) => s.status === "running" || s.status === "loading-engine");
@@ -236,8 +438,16 @@ export function MapView({ activeView }: { activeView: HeatmapView }) {
   const setLegendVisible = useAppStore((s) => s.setLegendVisible);
   const contouringEnabled = useAppStore((s) => s.contouringEnabled);
   const setContouringEnabled = useAppStore((s) => s.setContouringEnabled);
+  const [cellInspectionAvailable, setCellInspectionAvailable] = useState(false);
+  const [cellHover, setCellHover] = useState<CellHover | null>(null);
+  const handleCellHover = useCallback((hover: CellHover | null) => setCellHover(hover), []);
   const crsIsProjected = params.analysisCrs.trim() !== "" && params.analysisCrs.trim().toUpperCase() !== "EPSG:4326";
   const contouringAvailable = !gridFileName && !crsIsProjected;
+  // Single source of truth: the store value can stay `true` from an earlier run
+  // while contours are no longer available (grid file loaded, projected CRS).
+  // The map layer and the toggle must agree, so "toggle shows OFF" always means
+  // "contours are not covering the cells".
+  const contouringActive = contouringEnabled && contouringAvailable;
 
   const fc = useMemo(() => {
     if (!result) return null;
@@ -252,11 +462,6 @@ export function MapView({ activeView }: { activeView: HeatmapView }) {
   }, [fc, activeView, params.useNormalize]);
   const threshold = Math.min(Math.max(scoreThreshold[activeView], thresholdMin), thresholdMax);
   const thresholdStep = params.useNormalize ? 1 : Math.max((thresholdMax - thresholdMin) / 200, 1e-6);
-
-  const legendBands = useMemo(
-    () => (fc ? computeLegendBands(fc, scoreKeyForView(activeView)) : []),
-    [fc, activeView]
-  );
 
   const crimePoints: LatLon[] = useMemo(
     () => (csvText ? parseCrimePoints(csvText, params.latCol, params.lonCol, params.inputCrs) : []),
@@ -314,9 +519,11 @@ export function MapView({ activeView }: { activeView: HeatmapView }) {
             activeView={activeView}
             threshold={threshold}
             resultAnalysisCrs={resultAnalysisCrs}
-            contouringEnabled={contouringEnabled}
+            contouringEnabled={contouringActive}
             cellsX={result?.cellsX ?? null}
             cellsY={result?.cellsY ?? null}
+            onAvailabilityChange={setCellInspectionAvailable}
+            onHover={handleCellHover}
           />
         )}
         {showGrid && gridOutline && (
@@ -326,6 +533,21 @@ export function MapView({ activeView }: { activeView: HeatmapView }) {
         {showAnchor && anchorPoint && <Marker position={[anchorPoint.lat, anchorPoint.lon]} icon={ANCHOR_ICON} />}
         <FitBounds latLngs={fitPoints} />
       </MapContainer>
+
+      {cellInspectionAvailable && cellHover && (
+        <div
+          role="tooltip"
+          className="pointer-events-none absolute z-[500] -translate-x-1/2 -translate-y-[calc(100%+8px)] rounded-lg border border-border bg-background-elevated/95 px-2.5 py-1.5 text-xs shadow-lg backdrop-blur"
+          style={{ left: cellHover.point.x, top: cellHover.point.y }}
+        >
+          <div className="font-medium tabular-nums">
+            {t("map_cell_id")}: {cellHover.cellId}
+          </div>
+          <div className="text-foreground-muted tabular-nums">
+            {t("map_cell_score")}: {new Intl.NumberFormat(lang === "it" ? "it-IT" : "en-US", { maximumFractionDigits: 4 }).format(cellHover.score)}
+          </div>
+        </div>
+      )}
 
       {crimePreviewUnavailable && (
         <div className="pointer-events-none absolute top-3 left-3 z-[1000] max-w-xs">
@@ -360,7 +582,7 @@ export function MapView({ activeView }: { activeView: HeatmapView }) {
               </div>
             )}
             <Toggle
-              checked={contouringEnabled && contouringAvailable}
+              checked={contouringActive}
               onChange={setContouringEnabled}
               disabled={disabled || !contouringAvailable}
               label={t("contouring_label")}
@@ -438,13 +660,6 @@ export function MapView({ activeView }: { activeView: HeatmapView }) {
         )}
       </div>
 
-      {showHeatmap && legendVisible && (
-        <div className="px-3 pb-3 lg:pointer-events-none lg:absolute lg:bottom-3 lg:left-3 lg:z-[1000] lg:max-h-[calc(100%-1.5rem)] lg:p-0">
-          <FloatingCard className="max-h-full overflow-y-auto">
-            <Legend bands={legendBands} />
-          </FloatingCard>
-        </div>
-      )}
     </div>
   );
 }

@@ -33,7 +33,7 @@ export function LanguageToggle() {
       onClick={toggle}
       aria-label={lang === "it" ? t("lang_toggle_aria_to_en") : t("lang_toggle_aria_to_it")}
       title={t("lang_toggle_title")}
-      className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background-elevated text-xs font-semibold text-foreground-muted transition-colors hover:text-foreground"
+      className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-border bg-background-elevated text-xs font-semibold text-foreground-muted transition duration-150 hover:text-foreground active:scale-95"
     >
       {lang === "it" ? "IT" : "EN"}
     </button>

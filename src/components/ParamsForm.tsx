@@ -1,15 +1,18 @@
 "use client";
 
 import { useForm } from "react-hook-form";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ParamsFormValues } from "@/lib/paramsSchema";
 import { parseLocaleFloat } from "@/lib/parseLocaleFloat";
-import { useAppStore } from "@/lib/store";
+import { getPyodideApi } from "@/lib/pyodideClient";
+import { DEFAULT_ANALYSIS_CRS, useAppStore } from "@/lib/store";
 import { useT } from "@/lib/i18n";
 import { Toggle } from "@/components/ui/Toggle";
 
 const inputClass =
   "rounded-lg border border-border bg-background px-3 py-1.5 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-accent sm:text-sm";
+
+type CrsWarningState = "geographic" | "projected" | "invalid" | "unknown";
 
 export function ParamsForm() {
   const t = useT();
@@ -34,11 +37,45 @@ export function ParamsForm() {
   }, [JSON.stringify(watched)]);
 
   const bAuto = watch("bAuto");
+  const analysisCrs = watch("analysisCrs");
   const useOutliers = watch("useOutliers");
   const useNormalize = watch("useNormalize");
   const useGini = watch("useGini");
   const engine = watch("engine");
   const gridDisabled = disabled || Boolean(gridFileName);
+  const [crsWarningState, setCrsWarningState] = useState<CrsWarningState>(() => (
+    analysisCrs === DEFAULT_ANALYSIS_CRS.code && DEFAULT_ANALYSIS_CRS.isGeographic ? "geographic" : "unknown"
+  ));
+  const currentAnalysisCrs = useRef(analysisCrs);
+  currentAnalysisCrs.current = analysisCrs;
+
+  useEffect(() => {
+    const inspectedCrs = analysisCrs;
+    const knownDefaultGeographic =
+      inspectedCrs === DEFAULT_ANALYSIS_CRS.code && DEFAULT_ANALYSIS_CRS.isGeographic;
+    setCrsWarningState(
+      knownDefaultGeographic ? "geographic" : "unknown",
+    );
+    const timer = window.setTimeout(() => {
+      getPyodideApi()
+        .inspectAnalysisCrs(inspectedCrs)
+        .then((inspection) => {
+          if (currentAnalysisCrs.current !== inspectedCrs) return;
+          setCrsWarningState(
+            !inspection.valid ? "invalid" : inspection.isGeographic ? "geographic" : "projected",
+          );
+        })
+        .catch((error) => {
+          if (currentAnalysisCrs.current !== inspectedCrs) return;
+          // Advisory inspection must never classify an unknown CRS as projected
+          // or interfere with the normal analysis path.
+          console.error("[crs] advisory inspection failed", error);
+          setCrsWarningState(knownDefaultGeographic ? "geographic" : "unknown");
+        });
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [analysisCrs]);
+
   const gridFileSuffix = gridFileName ? (
     <span className="text-xs text-foreground-muted"> {t("cells_from_custom_grid_suffix")}</span>
   ) : null;
@@ -72,6 +109,12 @@ export function ParamsForm() {
         {t("crs_output")}
         <input className={inputClass} {...register("analysisCrs")} />
       </label>
+      {crsWarningState === "geographic" && (
+        <div role="alert" className="col-span-2 rounded-lg border border-amber-600 bg-amber-50 px-3 py-2 text-sm text-foreground dark:border-amber-400 dark:bg-amber-950/30">
+          <p className="font-medium">{t("crs_geographic_warning_title")}</p>
+          <p>{t("crs_geographic_warning_body")}</p>
+        </div>
+      )}
       <label className="flex flex-col gap-1">
         {t("param_cells_x")}
         {gridFileSuffix}

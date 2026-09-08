@@ -165,6 +165,14 @@ for engine in ("numpy", "loop"):
         "enhanced_gini": outcome["enhanced_gini"],
         "baseline_hit_score_pct": outcome["baseline_eval"]["hit_score_pct"] if outcome["baseline_eval"] else None,
         "enhanced_hit_score_pct": outcome["enhanced_eval"]["hit_score_pct"] if outcome["enhanced_eval"] else None,
+        "baseline_status": outcome["baseline_eval"]["status"] if outcome["baseline_eval"] else None,
+        "enhanced_status": outcome["enhanced_eval"]["status"] if outcome["enhanced_eval"] else None,
+        "baseline_eligible_hsp": outcome["baseline_eval"]["eligible_hit_score_pct"] if outcome["baseline_eval"] else None,
+        "baseline_eligible_area_fraction": outcome["baseline_eval"]["eligible_area_fraction"] if outcome["baseline_eval"] else None,
+        "enhanced_eligible_hsp": outcome["enhanced_eval"]["eligible_hit_score_pct"] if outcome["enhanced_eval"] else None,
+        "enhanced_eligible_area_fraction": outcome["enhanced_eval"]["eligible_area_fraction"] if outcome["enhanced_eval"] else None,
+        "enhanced_eligible_cells": outcome["enhanced_eval"]["eligible_cells"] if outcome["enhanced_eval"] else None,
+        "enhanced_total_cells": outcome["enhanced_eval"]["total_cells"] if outcome["enhanced_eval"] else None,
         "raw_min": float(baseline["score_raw"].min()),
         "raw_max": float(baseline["score_raw"].max()),
         "normalized_min": float(baseline["score"].min()),
@@ -240,13 +248,49 @@ json.dumps(results)
     ok = false;
   }
 
-  if (results.numpy.baseline_hit_score_pct === null || results.numpy.enhanced_hit_score_pct === null) {
-    console.error("FAIL: expected anchor point evaluation to produce hit scores");
+  if (results.numpy.baseline_status !== "valid" || results.numpy.baseline_hit_score_pct === null) {
+    console.error("FAIL: expected baseline anchor evaluation to be valid and produce a hit score");
+    ok = false;
+  }
+
+  if (results.numpy.enhanced_status !== "anchor_excluded" || results.numpy.enhanced_hit_score_pct !== null) {
+    console.error(`FAIL: expected enhanced anchor to be anchor_excluded with null hit score, got ${results.numpy.enhanced_status} and ${results.numpy.enhanced_hit_score_pct}`);
     ok = false;
   } else {
-    console.log(
-      `ok: anchor evaluation produced hit scores (baseline=${results.numpy.baseline_hit_score_pct}, enhanced=${results.numpy.enhanced_hit_score_pct})`
-    );
+    console.log(`ok: anchor evaluation states correct (baseline=${results.numpy.baseline_status}, enhanced=${results.numpy.enhanced_status})`);
+  }
+
+  // Finding 3 — eligible-domain HSP companion metrics.
+  // Baseline has no environmental weights: its eligible-domain HSP must equal
+  // its full-AOI HSP and its eligible-area fraction must be exactly 1.0.
+  if (Math.abs(results.numpy.baseline_eligible_hsp - results.numpy.baseline_hit_score_pct) > 1e-9) {
+    console.error(`FAIL: baseline eligible HSP (${results.numpy.baseline_eligible_hsp}) != baseline full-AOI HSP (${results.numpy.baseline_hit_score_pct})`);
+    ok = false;
+  }
+  if (results.numpy.baseline_eligible_area_fraction !== 1) {
+    console.error(`FAIL: baseline eligible_area_fraction must be 1.0, got ${results.numpy.baseline_eligible_area_fraction}`);
+    ok = false;
+  }
+  // Enhanced anchor is hard-excluded: an eligible-domain HSP is not meaningful.
+  if (results.numpy.enhanced_eligible_hsp !== null) {
+    console.error(`FAIL: anchor_excluded enhanced eligible HSP must be null, got ${results.numpy.enhanced_eligible_hsp}`);
+    ok = false;
+  }
+  // The eligible-area fraction still describes the (contracted) search domain.
+  {
+    const f = results.numpy.enhanced_eligible_area_fraction;
+    if (!(typeof f === "number" && f > 0 && f < 1)) {
+      console.error(`FAIL: enhanced eligible_area_fraction should be in (0,1) with a hard exclusion, got ${f}`);
+      ok = false;
+    }
+    const expectedEligible = results.numpy.enhanced_total_cells - results.numpy.zero_weight_count;
+    if (results.numpy.enhanced_eligible_cells !== expectedEligible) {
+      console.error(`FAIL: enhanced eligible_cells ${results.numpy.enhanced_eligible_cells} != total - zero_weight ${expectedEligible}`);
+      ok = false;
+    }
+    if (ok) {
+      console.log(`ok: Finding 3 metrics (baseline eligible==full, enhanced eligible HSP null, eligible area frac=${f.toFixed(4)}, eligible cells=${results.numpy.enhanced_eligible_cells}/${results.numpy.enhanced_total_cells})`);
+    }
   }
 
   if (GOLDEN.enhancedScoreSum !== null) {

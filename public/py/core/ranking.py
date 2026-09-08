@@ -1,4 +1,5 @@
 import geopandas as gpd
+import numpy as np
 
 def rankCells(gridGdf: gpd.GeoDataFrame, col: str = "score") -> gpd.GeoDataFrame:
     """
@@ -15,6 +16,12 @@ def rankCells(gridGdf: gpd.GeoDataFrame, col: str = "score") -> gpd.GeoDataFrame
 
     result = result.sort_values(by=col, ascending=False)
     result = result.reset_index(drop=True)
-    result["rank"] = range(1, len(result) + 1)
+    scores = result[col].to_numpy(dtype=float)
+    if np.isfinite(scores).all():
+        result["rank"] = result[col].rank(method="min", ascending=False).astype(int)
+    else:
+        # Preserve the existing sequential behavior for pathological score
+        # inputs; tied-score semantics apply only to finite Rossmo surfaces.
+        result["rank"] = range(1, len(result) + 1)
 
     return result

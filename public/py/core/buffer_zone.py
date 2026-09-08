@@ -25,6 +25,9 @@ def computeBufferZone(crimesXy: np.ndarray) -> float:
     B = minDistances.sum() / (2 * T)
 
     if B == 0:
-        raise ValueError("All crime locations are identical — cannot compute a meaningful buffer zone B.")
+        raise ValueError(
+            "Automatic B cannot be computed because all nearest-neighbour distances are zero. "
+            "Check for duplicate or coincident crime locations, or specify B manually."
+        )
 
     return B

@@ -1,6 +1,6 @@
 {
   "name": "midna-webapp",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "private": true,
   "scripts": {
     "prepare:assets": "node scripts/prepare-pyodide-assets.mjs && node scripts/build-worker.mjs",
@@ -15,7 +15,14 @@
     "test:golden": "node tests/golden/engine-equivalence.mjs",
     "test:golden:normalize": "node tests/golden/normalize-modes.mjs",
     "test:golden:csv": "node tests/golden/csv-column-resolution.mjs",
-    "test:golden:aoi": "node tests/golden/aoi-boundary-sensitivity.mjs"
+    "test:golden:aoi": "node tests/golden/aoi-boundary-sensitivity.mjs",
+    "test:golden:enhanced": "node tests/golden/enhanced-equivalence.mjs",
+    "test:golden:crs": "node tests/golden/analysis-crs-classification.mjs",
+    "test:golden:eligible": "node tests/golden/eligible-domain-hsp.mjs",
+    "test:golden:hillside": "node tests/golden/hillside-default.mjs",
+    "test:golden:minor": "node tests/golden/minor-findings.mjs",
+    "test:golden:outside-aoi": "node tests/golden/outside-aoi-anchor.mjs",
+    "test:golden:all": "npm run test:golden && npm run test:golden:enhanced && npm run test:golden:normalize && npm run test:golden:csv && npm run test:golden:aoi && npm run test:golden:crs && npm run test:golden:eligible && npm run test:golden:hillside && npm run test:golden:minor && npm run test:golden:outside-aoi"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",

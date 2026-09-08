@@ -7,7 +7,7 @@ from typing import Optional
 def _classifyDemValues(
     demValues: np.ndarray,
     pianuraMin: float = 0.0,
-    collinaMin: float = 220.0,
+    collinaMin: float = 250.0,
     montagnaMin: float = 350.0,
     lowWeight: float = 0.4,
     midWeight: float = 0.8,
@@ -109,7 +109,7 @@ def applyDemWeights(
     gridGdf: gpd.GeoDataFrame,
     demValues: np.ndarray,
     pianuraMin: float = 0.0,
-    collinaMin: float = 220.0,
+    collinaMin: float = 250.0,
     montagnaMin: float = 350.0,
     lowWeight: float = 0.4,
     midWeight: float = 0.8,
@@ -120,11 +120,11 @@ def applyDemWeights(
     """
     Assigns elevation-based weights to grid cells using DEM values.
 
-    Weight classes (minimum-elevation thresholds, Atlanta defaults):
+    Weight classes (minimum-elevation thresholds):
         elevation < pianuraMin              : w = nodata weight
-        pianuraMin  to collinaMin  (0-220m)     : w = 0.4 (flatland)
-        collinaMin  to montagnaMin (220-350m)   : w = 0.8 (hillside)
-        >= montagnaMin              (>=350m)    : w = 0.0 (mountain)
+        pianuraMin <= elevation < collinaMin (0 <= elevation < 250m) : w = 0.4 (flatland)
+        collinaMin <= elevation < montagnaMin (250 <= elevation < 350m) : w = 0.8 (hillside)
+        montagnaMin <= elevation (>=350m) : w = 0.0 (mountain)
 
     Parameters:
         gridGdf   : GeoDataFrame of grid cells
@@ -272,12 +272,12 @@ def applyWeights(gridGdf: gpd.GeoDataFrame, weightColumns: list) -> gpd.GeoDataF
 
 
 if __name__ == "__main__":
-    # Self-check for the minimum-threshold DEM binning.
-    _vals = np.array([-10.0, 0.0, 100.0, 220.0, 300.0, 350.0, 500.0, np.nan])
+    # Self-check for the current default minimum-threshold DEM binning.
+    _vals = np.array([-10.0, 0.0, 100.0, 249.999, 250.0, 300.0, 350.0, 500.0, np.nan])
     _w = _classifyDemValues(
-        _vals, pianuraMin=0.0, collinaMin=220.0, montagnaMin=350.0,
+        _vals, pianuraMin=0.0, montagnaMin=350.0,
         lowWeight=0.4, midWeight=0.8, highWeight=0.0, nodataWeight=-1.0,
     )
-    # below pianuraMin and NaN -> nodata; [0,220) -> low; [220,350) -> mid; >=350 -> high
-    assert list(_w) == [-1.0, 0.4, 0.4, 0.8, 0.8, 0.0, 0.0, -1.0], list(_w)
+    # below pianuraMin and NaN -> nodata; [0,250) -> low; [250,350) -> mid; >=350 -> high
+    assert list(_w) == [-1.0, 0.4, 0.4, 0.4, 0.8, 0.8, 0.0, 0.0, -1.0], list(_w)
     print("weights self-check OK")

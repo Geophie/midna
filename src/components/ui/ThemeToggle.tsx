@@ -31,7 +31,7 @@ export function ThemeToggle() {
       onClick={toggleTheme}
       aria-label={t("theme_toggle_aria")}
       title={t("theme_toggle_title")}
-      className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background-elevated text-foreground-muted transition-colors hover:text-foreground"
+      className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-border bg-background-elevated text-foreground-muted transition duration-150 hover:text-foreground active:scale-95"
     >
       {/* Which icon shows is a pure function of the data-theme attribute
           (already set pre-paint by THEME_INIT_SCRIPT) via the `dark:`

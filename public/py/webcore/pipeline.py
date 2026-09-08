@@ -231,7 +231,7 @@ async def run(params, progress_cb):
                 scored_gdf,
                 dem_values,
                 pianuraMin=layer.get("pianuraMin", 0.0),
-                collinaMin=layer.get("collinaMin", 220.0),
+                collinaMin=layer.get("collinaMin", 250.0),
                 montagnaMin=layer.get("montagnaMin", 350.0),
                 lowWeight=layer.get("lowWeight", 0.4),
                 midWeight=layer.get("midWeight", 0.8),
@@ -348,15 +348,69 @@ async def run(params, progress_cb):
 
     if anchor_geom is not None:
         baseline_hit = evaluation.computeHitScore(baseline_gdf, anchor_geom)
-        baseline_area = evaluation.computeSearchArea(baseline_gdf, baseline_hit["anchor_score"])
-        baseline_eval = {**baseline_hit, **baseline_area}
+        b_status = "valid" if baseline_hit["is_contained"] else "out_of_domain"
+
+        b_anchor_score = baseline_hit["anchor_score"] if b_status == "valid" else None
+        baseline_area = evaluation.computeSearchArea(baseline_gdf, b_anchor_score)
+        # Baseline has no environmental weights -> every cell is eligible, so the
+        # eligible-domain HSP collapses to the full-AOI HSP and the eligible-area
+        # fraction is 1.0. Reported for schema parity with the enhanced model.
+        baseline_elig = evaluation.computeEligibleMetrics(baseline_gdf, b_anchor_score, None, "score")
+
+        baseline_eval = {
+            "status": b_status,
+            "anchor_rank": baseline_hit["anchor_rank"] if b_status == "valid" else None,
+            "n_cells": baseline_hit["n_cells"],
+            "hit_score_pct": baseline_hit["hit_score_pct"] if b_status == "valid" else None,
+            "anchor_score": b_anchor_score,
+            "distance_to_nearest_cell_m": baseline_hit["distance_to_nearest_cell_m"],
+            "home_guess_distance_m": baseline_hit["home_guess_distance_m"] if b_status == "valid" else None,
+            "n_priority_cells": baseline_area["n_priority_cells"],
+            "search_area_km2": baseline_area["search_area_km2"],
+            "total_cells": baseline_area["total_cells"],
+            "eligible_hit_score_pct": baseline_elig["eligible_hit_score_pct"],
+            "eligible_area_fraction": baseline_elig["eligible_area_fraction"],
+            "eligible_cells": baseline_elig["eligible_cells"],
+            "eligible_area_km2": baseline_elig["eligible_area_km2"],
+        }
 
         if weight_cols:
             enhanced_hit = evaluation.computeHitScore(enhanced_gdf, anchor_geom, score_col)
-            enhanced_area = evaluation.computeSearchArea(
-                enhanced_gdf, enhanced_hit["anchor_score"], score_col
+
+            e_status = "valid"
+            if not enhanced_hit["is_contained"]:
+                e_status = "out_of_domain"
+            elif bool(enhanced_gdf.loc[enhanced_hit["anchor_cell_idx"], "zero_weight_applied"]):
+                e_status = "anchor_excluded"
+
+            e_anchor_score = enhanced_hit["anchor_score"] if e_status == "valid" else None
+            enhanced_area = evaluation.computeSearchArea(enhanced_gdf, e_anchor_score, score_col)
+            # Eligible domain = cells NOT hard-zeroed by an environmental layer
+            # (MIDNA's existing zero_weight_applied semantics — not redefined
+            # here). eligible_hit_score_pct is None unless the anchor is a valid,
+            # eligible, in-domain point; eligible_area_fraction describes the
+            # search domain and stays reportable for every status.
+            eligible_mask = ~enhanced_gdf["zero_weight_applied"].to_numpy(dtype=bool)
+            enhanced_elig = evaluation.computeEligibleMetrics(
+                enhanced_gdf, e_anchor_score, eligible_mask, score_col
             )
-            enhanced_eval = {**enhanced_hit, **enhanced_area}
+
+            enhanced_eval = {
+                "status": e_status,
+                "anchor_rank": enhanced_hit["anchor_rank"] if e_status == "valid" else None,
+                "n_cells": enhanced_hit["n_cells"],
+                "hit_score_pct": enhanced_hit["hit_score_pct"] if e_status == "valid" else None,
+                "anchor_score": e_anchor_score,
+                "distance_to_nearest_cell_m": enhanced_hit["distance_to_nearest_cell_m"],
+                "home_guess_distance_m": enhanced_hit["home_guess_distance_m"] if e_status == "valid" else None,
+                "n_priority_cells": enhanced_area["n_priority_cells"],
+                "search_area_km2": enhanced_area["search_area_km2"],
+                "total_cells": enhanced_area["total_cells"],
+                "eligible_hit_score_pct": enhanced_elig["eligible_hit_score_pct"],
+                "eligible_area_fraction": enhanced_elig["eligible_area_fraction"],
+                "eligible_cells": enhanced_elig["eligible_cells"],
+                "eligible_area_km2": enhanced_elig["eligible_area_km2"],
+            }
 
     await progress_cb(1.0, "done")
 

@@ -65,7 +65,7 @@ log("all fixture files written to pyodide FS");
 const pyLayers = [
   {
     type: "dem", name: "DEM", path: "/input_layer_0.tif",
-    pianuraMin: 0.0, collinaMin: 220.0, montagnaMin: 350.0,
+    pianuraMin: 0.0, collinaMin: 250.0, montagnaMin: 350.0,
     lowWeight: 0.4, midWeight: 0.8, highWeight: 0.0, nodataWeight: 0.0,
   },
   { type: "exclusion", name: "Cimiteri", path: "/input_layer_1/cemetery_polygon.shp", intersectWeight: 0.0, noIntersectWeight: 1.0 },

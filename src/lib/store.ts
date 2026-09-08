@@ -64,11 +64,16 @@ export interface AnalysisParams {
   anchorLon: number | null;
 }
 
+export const DEFAULT_ANALYSIS_CRS = {
+  code: "EPSG:4326",
+  isGeographic: true,
+} as const;
+
 export const DEFAULT_PARAMS: AnalysisParams = {
   latCol: "Latitude",
   lonCol: "Longitude",
   inputCrs: "EPSG:4326",
-  analysisCrs: "EPSG:4326",
+  analysisCrs: DEFAULT_ANALYSIS_CRS.code,
   cellsX: 200,
   cellsY: 200,
   aoiPaddingPct: 10,
