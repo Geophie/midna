@@ -17,6 +17,8 @@ const eslintConfig = defineConfig([
     "public/py/core/**",
     "public/pyodide-worker.js",
     "spike/**",
+    // Generated Vercel build output (gitignored), not source we author or lint.
+    ".vercel/**",
   ]),
 ]);
 

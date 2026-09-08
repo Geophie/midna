@@ -37,7 +37,7 @@ export function LayerCard({ entry }: { entry: LayerEntry }) {
         <button
           type="button"
           onClick={() => removeLayer(id)}
-          className="text-xs text-foreground-muted hover:text-red-600 dark:hover:text-red-400"
+          className="cursor-pointer rounded-full px-3 py-1 text-sm text-foreground-muted transition-colors hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400"
         >
           {t("btn_remove")}
         </button>

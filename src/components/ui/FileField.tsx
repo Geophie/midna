@@ -32,7 +32,7 @@ export function FileField({
     <div className="flex items-center gap-2">
       <label
         htmlFor={id}
-        className="shrink-0 cursor-pointer rounded-full bg-accent-soft px-3 py-1 text-sm font-medium text-accent"
+        className="shrink-0 cursor-pointer rounded-full bg-accent-soft px-3 py-1 text-sm font-medium text-accent transition duration-150 hover:bg-accent hover:text-accent-foreground active:scale-95"
       >
         {chooseLabel}
       </label>

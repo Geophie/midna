@@ -31,7 +31,7 @@ export function TabNav({
               role="tab"
               aria-selected={active}
               onClick={() => onChange(tab.id)}
-              className={`shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+              className={`shrink-0 cursor-pointer whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition duration-150 active:scale-95 ${
                 active
                   ? "bg-accent text-accent-foreground"
                   : "text-foreground-muted hover:text-foreground"
@@ -57,7 +57,7 @@ export function TabNav({
               role="tab"
               aria-selected={active}
               onClick={() => onChange(tab.id)}
-              className={`flex flex-1 flex-col items-center gap-0.5 px-1 pt-2 pb-1.5 text-[10px] font-medium transition-colors ${
+              className={`flex flex-1 cursor-pointer flex-col items-center gap-0.5 px-1 pt-2 pb-1.5 text-[10px] font-medium transition duration-150 active:scale-95 ${
                 active
                   ? "text-accent"
                   : "text-foreground-muted active:text-foreground"

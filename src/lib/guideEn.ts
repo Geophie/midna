@@ -123,6 +123,11 @@ generally preferable, so that distances have a direct physical meaning.
 CRS choice is therefore not purely a display setting: it can influence
 distance calculations and should be kept constant when comparing multiple
 analyses.
+MIDNA displays a warning when the selected analysis CRS is geographic.
+Geographic coordinates are angular, and using them can affect
+distance-based calculations, including the automatic buffer zone B and the
+resulting CGT surface. A projected CRS with linear units, appropriate to
+the study region, remains preferable for rigorous distance-based analysis.
 
 
 
@@ -225,6 +230,9 @@ The model combines:
       recognition.
 
 The main parameters are f, g, B and K.
+MIDNA computes the distance between grid-cell centroids and crime
+locations as Manhattan (L1) distance, which depends on the orientation of
+the coordinate axes.
 
 f — external distance decay
 f controls the speed at which the contribution of a crime location
@@ -262,6 +270,8 @@ locations using half the mean nearest-neighbour distance:
 B = ½ × mean nearest-neighbour distance
 consistent with the operationalisation of the CGT formula described by
 Rossmo and used in Russo et al. (2026).
+Duplicated or coincident crime coordinates contribute nearest-neighbour
+distances of zero and can therefore reduce the automatic value of B.
 If outlier removal is active, the automatic value is calculated exclusively
 on the retained crime locations.
 B can also be entered manually when there is a methodological
@@ -343,12 +353,11 @@ The DEM layer uses the mean elevation of each cell to assign a weight based
 on the elevation class.
 The default classification distinguishes:
 
-   •   lowland: 0–220 m;
-   •   hillside: 220–350 m;
-   •   mountain: >350 m;
+   •   lowland: 0 ≤ elevation < 250 m;
+   •   hillside: 250 ≤ elevation < 350 m;
+   •   mountain: ≥350 m;
    •   cells without data.
-These thresholds derive from the operationalisation used in the Russo et
-al. (2026) proof of method and should not be interpreted as universal
+These current application defaults should not be interpreted as universal
 geomorphological classifications.
 In a new geographic area, thresholds and weights should be reassessed
 against local topography, residential distribution, and the specific
@@ -371,6 +380,9 @@ compatible with the anchor hypothesis without eliminating them completely.
 Similarly, an inclusion layer can increase the score of cells considered
 more plausible without treating the presence of the feature as definitive
 evidence.
+A cell is assigned the configured intersection weight whenever its
+geometry intersects the layer, including contact limited to the shared
+boundary; MIDNA does not use proportional-overlap weighting.
 
 Why use intermediate weights?
 A single cell can contain multiple land uses.
@@ -420,6 +432,12 @@ Comparing Baseline and Enhanced makes it possible to assess how contextual
 information has changed the spatial prioritisation.
 When no anchor point is provided, MIDNA still generates the surface and
 ranking, but metrics that require ground truth are not available.
+If the known anchor lies outside the analysis grid, it is treated as out
+of domain: MIDNA does not substitute the nearest grid cell, and the
+retrospective metrics are not reported for it. If the anchor lies in a
+cell made ineligible by an environmental or land-use weight of zero, it is
+treated as an explicit exclusion in the Enhanced model, not as an ordinary
+zero-score result.
 
 
 
@@ -436,6 +454,12 @@ interpreted as the proportional share of the search area.
 With custom grids containing cells of different areas, this equivalence is
 not guaranteed: in such cases use Search Area to interpret the actual
 space to be examined.
+When an environmental or land-use weight of zero makes part of the grid
+ineligible, MIDNA reports Hit Score % both over the full AOI and over the
+eligible domain only, together with the eligible area (the share of the
+grid that remains eligible). A lower Full-AOI Hit Score % can partly
+reflect contraction of the eligible domain rather than a better ranking,
+so the two values should be read together.
 
 
 

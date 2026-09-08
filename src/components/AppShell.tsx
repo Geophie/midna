@@ -3,7 +3,9 @@ import { TabNav, type TabDef } from "@/components/ui/TabNav";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { LanguageToggle } from "@/components/ui/LanguageToggle";
 import { Toggle } from "@/components/ui/Toggle";
+import { AtlantaNotice } from "@/components/AtlantaNotice";
 import { useT } from "@/lib/i18n";
+import { IoLogoGithub } from "react-icons/io5";
 
 const DEFAULT_LEFT_WIDTH = 672;
 const MAX_LEFT_WIDTH = 1024;
@@ -52,6 +54,10 @@ export function AppShell({
 
     const syncWidth = () => {
       const workspaceWidth = workspace.getBoundingClientRect().width;
+      // A detached/hidden workspace measures 0; clampLeftPanelWidth(_, 0) is 0,
+      // which would collapse the controls panel. Ignore those — the real width
+      // is re-synced by this effect when the panel becomes visible again.
+      if (workspaceWidth === 0) return;
       setLeftPanelWidth((currentWidth) => {
         const nextWidth = clampLeftPanelWidth(currentWidth, workspaceWidth);
         return currentWidth === nextWidth ? currentWidth : nextWidth;
@@ -63,7 +69,10 @@ export function AppShell({
     const observer = new ResizeObserver(syncWidth);
     observer.observe(workspace);
     return () => observer.disconnect();
-  }, []);
+    // Re-run when the map panel is toggled: the workspace node this effect
+    // observes is unmounted on hide and a new one is mounted on show, so the
+    // observer (and the initial syncWidth) must rebind to the current node.
+  }, [mapPanelVisible]);
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return;
@@ -119,10 +128,21 @@ export function AppShell({
             <h1 className="text-xl font-semibold">MIDNA</h1>
             <p className="text-sm text-foreground-muted">{t("app_subtitle")}</p>
           </div>
+          <AtlantaNotice />
         </div>
         <TabNav tabs={tabs} activeTab={activeTab} onChange={onTabChange} />
         <div className="flex flex-nowrap items-center justify-end gap-3">
           <Toggle checked={mapPanelVisible} onChange={onMapPanelVisibleChange} label={t("map_toggle_label")} />
+          <a
+            href="https://github.com/Geophie/midna"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={t("github_repository_aria")}
+            title={t("github_repository_aria")}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-background-elevated text-foreground-muted transition duration-150 hover:text-foreground"
+          >
+            <IoLogoGithub size={18} aria-hidden="true" />
+          </a>
           <ThemeToggle />
           <LanguageToggle />
         </div>

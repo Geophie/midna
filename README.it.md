@@ -108,12 +108,24 @@ I comandi eseguono rispettivamente i test unitari Vitest, i test end-to-end Play
 > *Crime Science*, 15, Article 18.  
 > https://doi.org/10.1186/s40163-026-00278-w
 
-## Contributori
+## Collaboratori
 
-| Contributore | Ruolo | Contributo |
+| Collaboratori | Ruolo | Contributo |
 | --- | --- | --- |
 | **Sofia Maria Russo** ([@Geophie](https://github.com/Geophie)) | Responsabile del progetto / Ricerca | Concetto originale, metodologia e autrice dello studio scientifico e degli script originali|
 | **Giacomo Butera** ([@WhtNoiz](https://github.com/WhtNoiz)) | Sviluppatore | Applicazione React/Next.js, pipeline Pyodide nel browser, visualizzazione ed esportazione |
+
+### Valutazione metodologica indipendente
+
+Desideriamo ringraziare il **Dr René Gapert, Ricercatore Indipendente**, per l'**“revisione metodologica indipendente e verifica delle correzioni** di MIDNA e per il dettagliato feedback tecnico che ha contribuito a orientare i successivi miglioramenti metodologici e di riproducibilità.
+
+La revisione ha mostrato che, nelle condizioni di test considerate, l’implementazione convenzionale del modello Criminal Geographic Targeting (CGT) di MIDNA produce risultati estremamente vicini a quelli di un calcolo di riferimento sviluppato indipendentemente ed è numericamente stabile alle risoluzioni analizzate.
+
+L'audit ha inoltre individuato diverse questioni metodologiche e di riproducibilità relative alla gestione degli anchor point fuori dominio o esclusi da vincoli ambientali, all'interpretazione dell'Hit Score Percentage in presenza di hard constraints ambientali, all'uso di CRS geografici, agli effetti delle coordinate duplicate sulla buffer zone automatica \(B\), alla dipendenza della distanza Manhattan dall'orientamento degli assi, alla semantica delle intersezioni dei layer ambientali, all'interpretazione del coefficiente di Gini, alla gestione dei ranking a pari punteggio, alla diagnostica della buffer zone e alla semantica della distanza dalla cella più vicina.
+
+Questi risultati hanno guidato successive revisioni di MIDNA, tra cui stati espliciti per gli anchor, reporting separato di Full-AOI ed Eligible-domain HSP, reporting dell'area eleggibile, avvisi per CRS geografici, una documentazione più chiara delle sensibilità del modello e ulteriori miglioramenti di robustezza e diagnostica.
+
+La revisione attesta la conformità dell'implementazione e la riproducibilità nelle condizioni testate; **non** costituisce una validazione predittiva generale, una certificazione operativa o una prova di superiorità predittiva rispetto ad altri metodi di geographic profiling.
 
 ## Citazione
 

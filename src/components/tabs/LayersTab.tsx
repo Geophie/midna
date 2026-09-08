@@ -14,7 +14,7 @@ function newDemLayer(): DemLayerSpec {
     fileBytes: new Uint8Array(),
     enabled: true,
     pianuraMin: 0,
-    collinaMin: 220,
+    collinaMin: 250,
     montagnaMin: 350,
     lowWeight: 0,
     midWeight: 0,
@@ -48,7 +48,7 @@ export function LayersTab() {
           type="button"
           disabled={hasDem}
           onClick={() => addLayer(newDemLayer())}
-          className="rounded-full border border-border px-4 py-1.5 text-sm disabled:opacity-40"
+          className="cursor-pointer rounded-full border border-border px-4 py-1.5 text-sm transition duration-150 hover:bg-accent hover:text-accent-foreground active:scale-95 disabled:active:scale-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-foreground"
           title={hasDem ? t("warning_single_dem") : undefined}
         >
           {t("layer_type_dem")}
@@ -56,14 +56,14 @@ export function LayersTab() {
         <button
           type="button"
           onClick={() => addLayer(newVectorLayer("inclusion", t("layer_type_inclusion")))}
-          className="rounded-full border border-border px-4 py-1.5 text-sm"
+          className="cursor-pointer rounded-full border border-border px-4 py-1.5 text-sm transition duration-150 hover:bg-accent hover:text-accent-foreground active:scale-95"
         >
           {t("layer_type_inclusion")}
         </button>
         <button
           type="button"
           onClick={() => addLayer(newVectorLayer("exclusion", t("layer_type_exclusion")))}
-          className="rounded-full border border-border px-4 py-1.5 text-sm"
+          className="cursor-pointer rounded-full border border-border px-4 py-1.5 text-sm transition duration-150 hover:bg-accent hover:text-accent-foreground active:scale-95"
         >
           {t("layer_type_exclusion")}
         </button>

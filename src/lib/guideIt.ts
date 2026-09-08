@@ -113,6 +113,11 @@ CRS proiettato appropriato alla regione di studio e con unità metriche, così c
 distanze abbiano un significato fisico diretto.
 La scelta del CRS non è quindi puramente grafica: può influenzare i calcoli di distanza e
 deve essere mantenuta costante quando si confrontano più analisi.
+MIDNA mostra un avviso quando il CRS di analisi selezionato è geografico. Le coordinate
+geografiche sono angolari e il loro utilizzo può influenzare i calcoli basati sulle
+distanze, inclusi la buffer zone automatica B e la superficie CGT risultante. Un CRS
+proiettato con unità lineari, appropriato alla regione di studio, rimane preferibile per
+un’analisi rigorosa basata sulle distanze.
 
 
 
@@ -211,6 +216,9 @@ Il modello combina:
       al proprio anchor point per ridurre il rischio di riconoscimento.
 
 I principali parametri sono f, g, B e K.
+MIDNA calcola la distanza tra i centroidi delle celle della griglia e le crime locations
+come distanza di Manhattan (L1), che dipende dall’orientamento degli assi del sistema di
+coordinate.
 
 f — distance decay esterno
 f controlla la velocità con cui il contributo di una crime location diminuisce oltre la buffer
@@ -247,6 +255,8 @@ utilizzando metà della mean nearest-neighbour distance:
 B = ½ × mean nearest-neighbour distance
 coerentemente con l’operazionalizzazione della formula CGT descritta da Rossmo e
 utilizzata in Russo et al. (2026).
+Coordinate dei crimini duplicate o coincidenti contribuiscono con nearest-neighbour
+distance pari a zero e possono quindi ridurre il valore automatico di B.
 Se è attiva la rimozione degli outlier, il valore automatico viene calcolato esclusivamente
 sulle crime locations mantenute.
 B può anche essere inserito manualmente quando esiste una giustificazione metodologica
@@ -325,13 +335,12 @@ Il layer DEM utilizza l’elevazione media di ogni cella per assegnare un peso i
 della classe altimetrica.
 La classificazione predefinita distingue:
 
-   •   pianura: 0–220 m;
-   •   collina: 220–350 m;
-   •   montagna: >350 m;
+   •   pianura: 0 ≤ elevazione < 250 m;
+   •   collina: 250 ≤ elevazione < 350 m;
+   •   montagna: ≥350 m;
    •   celle senza dato.
-Queste soglie derivano dall’operazionalizzazione utilizzata nel proof-of-method di Russo et
-al. (2026) e non devono essere interpretate come classificazioni geomorfologiche
-universali.
+Questi sono i default correnti dell’applicazione e non devono essere interpretati come
+classificazioni geomorfologiche universali.
 In una nuova area geografica, le soglie e i pesi dovrebbero essere rivalutati rispetto alla
 topografia, alla distribuzione residenziale e all’ipotesi investigativa specifica.
 Prestazioni
@@ -351,6 +360,9 @@ Un exclusion layer può ridurre il CGT score nelle aree considerate meno compati
 l’anchor hypothesis senza eliminarle completamente.
 Analogamente, un inclusion layer può aumentare il punteggio delle celle ritenute più
 plausibili senza trattare la presenza della caratteristica come prova definitiva.
+A una cella viene assegnato il peso di intersezione configurato ogni volta che la sua
+geometria interseca il layer, compreso il contatto limitato al solo confine condiviso;
+MIDNA non utilizza una ponderazione proporzionale alla sovrapposizione.
 
 Perché utilizzare pesi intermedi?
 Una singola cella può contenere più land uses.
@@ -399,6 +411,11 @@ Il confronto tra Baseline ed Enhanced permette di valutare come le informazioni
 contestuali abbiano modificato la prioritizzazione spaziale.
 Quando non viene fornito un anchor point, MIDNA genera comunque la superficie e il
 ranking, ma le metriche che richiedono ground truth non sono disponibili.
+Se l’anchor noto si trova all’esterno della griglia di analisi, viene trattato come fuori
+dominio: MIDNA non sostituisce la cella di griglia più vicina e le metriche retrospettive
+non vengono riportate. Se l’anchor si trova in una cella resa ineleggibile da un peso
+ambientale o di uso del suolo pari a zero, nel modello Enhanced viene trattato come
+un’esclusione esplicita, non come un ordinario risultato a punteggio zero.
 
 
 
@@ -415,6 +432,11 @@ interpretato anche come quota proporzionale dell’area di ricerca.
 Con reticoli personalizzati contenenti celle di area diversa, questa equivalenza non è
 garantita: in tali casi utilizzare la Search Area per interpretare l’effettivo spazio da
 esaminare.
+Quando un peso ambientale o di uso del suolo pari a zero rende ineleggibile una parte della
+griglia, MIDNA riporta l’Hit Score % sia sull’intera AOI sia sul solo dominio eleggibile,
+insieme all’area eleggibile (la quota della griglia che rimane eleggibile). Un Hit Score %
+sull’intera AOI più basso può in parte riflettere la contrazione del dominio eleggibile
+anziché un ranking migliore, per cui i due valori devono essere letti congiuntamente.
 
 
 

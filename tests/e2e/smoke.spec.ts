@@ -10,15 +10,15 @@ test("upload CSV, run analysis in a real browser Worker, get ranked results", as
   await page.goto("/");
 
   await page.setInputFiles('input[type="file"]', fixture);
-  await expect(page.getByText(/crimes\.csv caricato/)).toBeVisible();
+  await expect(page.getByText(/crimes\.csv loaded/)).toBeVisible();
 
-  await page.getByRole("tab", { name: "Parametri" }).click();
-  await page.getByLabel("Celle X").fill("20");
-  await page.getByLabel("Celle Y").fill("20");
+  await page.getByRole("tab", { name: "Parameters" }).click();
+  await page.getByLabel("Cells X").fill("20");
+  await page.getByLabel("Cells Y").fill("20");
 
-  await page.getByRole("button", { name: "Esegui analisi" }).click();
+  await page.getByRole("button", { name: "Run analysis" }).click();
 
-  await expect(page.getByText(/reati usati.*griglia di \d+ celle/)).toBeVisible({
+  await expect(page.getByText(/crimes used.*grid of \d+ cells/)).toBeVisible({
     timeout: 120_000,
   });
 

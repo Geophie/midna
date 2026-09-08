@@ -1,9 +1,11 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { IoLogoGithub } from "react-icons/io5";
 import { Card } from "@/components/ui/Card";
 import { guideIt } from "@/lib/guideIt";
 import { guideEn } from "@/lib/guideEn";
+import { useT } from "@/lib/i18n";
 import { useAppStore } from "@/lib/store";
 
 function escapeRegExp(value: string) {
@@ -38,23 +40,33 @@ const italianSeparatedHeadings = new Set([
 const italianHighlights = new Map<number, string[]>([
   [4, ["Criminal Geographic Targeting (CGT)"]], [5, ["modificare la superficie risultante mediante layer ambientali e di"]], [6, ["uso del suolo"]], [7, ["piattaforma modulare ed estensibile"]],
   [13, ["strumento di prioritizzazione spaziale per la ricerca di anchor point"]], [14, ["(come la residenza) di criminali seriale"]], [18, ["non rappresenta una probabilità di colpevolezza"]], [27, ["anchor point noto"]],
-  [35, ["scheda Input"]], [37, ["anchor point noto"]], [41, ["scheda Parametri"]], [44, ["scheda Layers"]], [47, ["Esegui analisi"]], [49, ["scheda Output"]],
-  [60, ["CRS di input"]], [62, ["EPSG:4326 — WGS 84"]], [74, ["facoltativo"]], [84, ["Importante:"]],
-  [98, ["NumPy"]], [100, ["Python loop"]], [106, ["CRS di input"]], [107, ["CRS di analisi"]], [111, ["CRS proiettato appropriato alla regione di studio e con unità metriche"]],
-  [121, ["HubDist"]], [125, ["HubDist > μ + kₒᵤₜ × σ"]], [128, ["μ"]], [129, ["σ"]], [130, ["kₒᵤₜ"]], [131, ["2σ"]],
-  [136, ["non implica che il punto"]], [137, ["debba essere rimosso"]], [151, ["La rimozione degli outlier non deve quindi essere interpretata come una procedura"]], [152, ["che migliora automaticamente l’accuratezza di Rossmo"]],
-  [162, ["Scenario A — tutti gli eventi"]], [164, ["Scenario B — outlier rimossi"]], [167, ["parameter/data sensitivity"]], [177, ["B = Auto"]], [179, ["reticolo personalizzato"]], [192, ["scelta analitica"]],
-  [202, ["Criminal Geographic Targeting (CGT)"]], [205, ["distance decay"]], [208, ["buffer zone"]], [212, ["f", "g", "B", "K"]], [215, ["f"]], [221, ["g"]], [226, ["f = 1.2"]], [227, ["g = 1.2"]],
-  [235, ["Per un’analisi standard, f = g = 1.2 costituisce quindi il punto di partenza"]], [236, ["raccomandato; per analisi di ricerca, è preferibile verificare la stabilità del risultato"]], [237, ["rispetto a configurazioni alternative."]],
-  [243, ["B"]], [244, ["B = Auto"]], [246, ["B = ½ × mean nearest-neighbour distance"]], [261, ["K"]], [270, ["0–100"]], [274, ["non che esista una probabilità dell’80% che l’anchor si trovi in"]], [275, ["quella cella"]],
-  [283, ["concentrazione della distribuzione dei CGT score"]], [288, ["Un Gini elevato non significa automaticamente che il geoprofilo sia più accurato"]], [290, ["concentrazione"]],
-  [303, ["Enhanced Score = Baseline CGT Score × spatial weight(s)"]], [306, ["accumularsi"]], [312, ["spatial modifiers"]], [327, ["0–220 m"]], [328, ["220–350 m"]], [329, [">350 m"]], [332, ["non devono essere interpretate come classificazioni geomorfologiche"]], [333, ["universali"]],
-  [347, ["inclusion layer", "exclusion layer"]], [365, ["pesi"]], [366, ["intermedi"]], [367, ["0"]], [383, ["Sfoglia cartella"]], [385, ["Sfoglia file multipli"]],
-  [393, ["Baseline"]], [396, ["Enhanced"]], [408, ["Hit Score %"]], [412, ["Hit Score %"]], [415, ["Search Area"]], [421, ["Search Area"]], [426, ["Search Area"]], [432, ["Guess Distance"]], [437, ["indicatore descrittivo"]], [438, ["complementare"]],
-  [451, ["non"]], [452, ["costituisce da sola evidenza di maggiore accuratezza"]], [467, ["CSV"]], [469, ["GeoJSON"]], [477, ["21 fasce di priorità"]], [481, ["ranking relativo della superficie"]], [492, ["visualizzazione della superficie"]],
-  [500, ["Rank"]], [501, ["Rank"]], [502, ["1 = fascia più calda / priorità maggiore"]], [503, ["21 = fascia più fredda / priorità minore"]], [509, ["Actual"]], [517, ["Priority %"]], [518, ["Priority %"]], [519, ["100% = fascia più prioritaria"]], [521, ["0% = fascia meno prioritaria"]], [525, ["Priority % non è una probabilità di localizzazione dell’anchor"]],
-  [530, ["Hit Score %"]], [531, ["Hit Score %"]], [541, ["Z-Score"]], [542, ["Z-Score"]], [548, ["Non deve essere interpretato come test statistico, livello di significatività o"]], [549, ["probabilità."]], [556, ["Contorni heatmap"]], [557, ["Contorni heatmap"]], [567, ["non costituisce una"]], [568, ["raccomandazione metodologica a utilizzare EPSG:4326 come CRS di analisi"]],
-  [574, ["prioritizzare aree"]], [586, ["dataset utilizzato; CRS; AOI; grid specification; trattamento degli outlier; f; g; B; K;"]], [587, ["layer utilizzati; pesi; impostazioni di normalizzazione; versione di MIDNA."]], [595, ["Criminal Geographic"]], [596, ["Targeting"]],
+  [35, ["scheda Input"]], [37, ["anchor point noto"]], [41, ["scheda Parametri"]], [44, ["scheda Layers"]],
+  [47, ["Esegui analisi"]], [49, ["scheda Output"]], [60, ["CRS di input"]], [62, ["EPSG:4326 — WGS 84"]],
+  [74, ["facoltativo"]], [84, ["Importante:"]], [98, ["NumPy"]], [100, ["Python loop"]],
+  [106, ["CRS di input"]], [107, ["CRS di analisi"]], [111, ["CRS proiettato appropriato alla regione di studio e con unità metriche"]], [126, ["HubDist"]],
+  [130, ["HubDist > μ + kₒᵤₜ × σ"]], [133, ["μ"]], [134, ["σ"]], [135, ["kₒᵤₜ"]],
+  [136, ["2σ"]], [141, ["non implica che il punto"]], [142, ["debba essere rimosso"]], [156, ["La rimozione degli outlier non deve quindi essere interpretata come una procedura"]],
+  [157, ["che migliora automaticamente l’accuratezza di Rossmo"]], [167, ["Scenario A — tutti gli eventi"]], [169, ["Scenario B — outlier rimossi"]], [172, ["parameter/data sensitivity"]],
+  [182, ["B = Auto"]], [184, ["reticolo personalizzato"]], [197, ["scelta analitica"]], [207, ["Criminal Geographic Targeting (CGT)"]],
+  [210, ["distance decay"]], [213, ["buffer zone"]], [217, ["f", "g", "B", "K"]], [223, ["f"]],
+  [229, ["g"]], [234, ["f = 1.2"]], [235, ["g = 1.2"]], [243, ["Per un’analisi standard, f = g = 1.2 costituisce quindi il punto di partenza"]],
+  [244, ["raccomandato; per analisi di ricerca, è preferibile verificare la stabilità del risultato"]], [245, ["rispetto a configurazioni alternative."]], [251, ["B"]], [252, ["B = Auto"]],
+  [254, ["B = ½ × mean nearest-neighbour distance"]], [271, ["K"]], [280, ["0–100"]], [284, ["non che esista una probabilità dell’80% che l’anchor si trovi in"]],
+  [285, ["quella cella"]], [293, ["concentrazione della distribuzione dei CGT score"]], [298, ["Un Gini elevato non significa automaticamente che il geoprofilo sia più accurato"]], [300, ["concentrazione"]],
+  [313, ["Enhanced Score = Baseline CGT Score × spatial weight(s)"]], [316, ["accumularsi"]], [322, ["spatial modifiers"]], [337, ["0 ≤ elevazione < 250 m"]],
+  [338, ["250 ≤ elevazione < 350 m"]], [339, ["≥350 m"]], [342, ["classificazioni geomorfologiche universali"]], [356, ["inclusion layer", "exclusion layer"]],
+  [377, ["pesi"]], [378, ["intermedi"]], [379, ["0"]], [395, ["Sfoglia cartella"]],
+  [397, ["Sfoglia file multipli"]], [405, ["Baseline"]], [409, ["Enhanced"]], [425, ["Hit Score %"]],
+  [429, ["Hit Score %"]], [432, ["Search Area"]], [444, ["Search Area"]], [448, ["Search Area"]],
+  [455, ["Guess Distance"]], [459, ["indicatore descrittivo"]], [460, ["complementare"]], [473, ["non"]],
+  [474, ["costituisce da sola evidenza di maggiore accuratezza"]], [489, ["CSV"]], [491, ["GeoJSON"]], [499, ["21 fasce di priorità"]],
+  [503, ["ranking relativo della superficie"]], [514, ["visualizzazione della superficie"]], [522, ["Rank"]], [523, ["Rank"]],
+  [524, ["1 = fascia più calda / priorità maggiore"]], [525, ["21 = fascia più fredda / priorità minore"]], [532, ["Actual"]], [539, ["Priority %"]],
+  [540, ["Priority %"]], [541, ["100% = fascia più prioritaria"]], [543, ["0% = fascia meno prioritaria"]], [547, ["Priority % non è una probabilità di localizzazione dell’anchor"]],
+  [552, ["Hit Score %"]], [553, ["Hit Score %"]], [563, ["Z-Score"]], [564, ["Z-Score"]],
+  [570, ["Non deve essere interpretato come test statistico, livello di significatività o"]], [571, ["probabilità."]], [578, ["Contorni heatmap"]], [579, ["Contorni heatmap"]],
+  [589, ["non costituisce una"]], [590, ["raccomandazione metodologica a utilizzare EPSG:4326 come CRS di analisi"]], [596, ["prioritizzare aree"]], [608, ["dataset utilizzato; CRS; AOI; grid specification; trattamento degli outlier; f; g; B; K;"]],
+  [609, ["layer utilizzati; pesi; impostazioni di normalizzazione; versione di MIDNA."]], [617, ["Criminal Geographic"]], [618, ["Targeting"]],
 ]);
 
 const englishSectionTitles = new Set([
@@ -91,7 +103,7 @@ const englishHighlights = [
   "parameter/data sensitivity", "B = Auto", "custom grid", "analytical choice",
   "f = 1.2", "g = 1.2", "B = ½ × mean nearest-neighbour distance", "0–100",
   "not that there is an 80% probability", "does not automatically mean", "Enhanced Score = Baseline CGT Score × spatial weight(s)",
-  "does not represent a 40% probability", "spatial modifiers", "0–220 m", "220–350 m", ">350 m",
+  "does not represent a 40% probability", "spatial modifiers", "0 ≤ elevation < 250 m", "250 ≤ elevation < 350 m", "≥350 m",
   "should not be interpreted as universal geomorphological classifications", "Baseline", "Enhanced",
   "Hit Score %", "Search Area", "Guess Distance", "complementary descriptive indicator", "CSV", "GeoJSON",
   "21 priority bands", "relative ranking", "Rank does not represent a probability",
@@ -115,12 +127,14 @@ function RawGuide({
   labels,
   separatedHeadings,
   renderLine,
+  footer,
 }: {
   text: string;
   sectionTitles: Set<string>;
   labels: Set<string>;
   separatedHeadings: Set<string>;
   renderLine: (line: string, index: number) => ReactNode;
+  footer?: ReactNode;
 }) {
   return (
     <Card className="gap-0 text-sm leading-relaxed text-foreground">
@@ -132,7 +146,26 @@ function RawGuide({
         if (!line) return lines[index - 1] ? <div key={index} className="h-3" /> : null;
         return <div key={index} className="whitespace-pre-wrap">{renderLine(line, index)}</div>;
       })}
+      {footer}
     </Card>
+  );
+}
+
+function GuideGithubCta() {
+  const t = useT();
+  return (
+    <div className="mt-6 border-t border-border pt-6 text-sm">
+      <p className="text-foreground-muted">{t("github_star_cta")}</p>
+      <a
+        href="https://github.com/Geophie/midna"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-3 inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 font-medium text-foreground transition-colors hover:bg-background"
+      >
+        <IoLogoGithub size={18} aria-hidden="true" />
+        {t("github_star_button")}
+      </a>
+    </div>
   );
 }
 
@@ -143,6 +176,7 @@ function ItalianGuide() {
       sectionTitles={italianSectionTitles}
       labels={italianLabels}
       separatedHeadings={italianSeparatedHeadings}
+      footer={<GuideGithubCta />}
       renderLine={(line, index) => {
         const highlights = italianHighlights.get(index);
         if (!highlights) return line;
@@ -160,6 +194,7 @@ function EnglishGuide() {
       sectionTitles={englishSectionTitles}
       labels={englishLabels}
       separatedHeadings={englishSeparatedHeadings}
+      footer={<GuideGithubCta />}
       renderLine={(line) => highlightEnglish(line)}
     />
   );
