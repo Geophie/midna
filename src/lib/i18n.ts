@@ -79,7 +79,8 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     error_grid_cells_positive: "Il numero di celle deve essere positivo.",
     error_rossmo_params: "Parametri della formula di Rossmo non validi (f, g, k o B).",
     error_hub_dist_threshold: "La soglia outlier deve essere positiva.",
-    error_env_weight_invalid: "Ogni peso o soglia ambientale deve essere un numero valido (sono ammessi valori negativi e maggiori di 1; non sono ammessi campi vuoti, NaN o infinito).",
+    error_env_weight_invalid: "Ogni peso ambientale deve essere un numero finito maggiore o uguale a 0. Le soglie DEM devono essere numeri finiti. Non sono ammessi campi vuoti, NaN o infinito.",
+    error_env_threshold_order: "Le soglie altimetriche del DEM devono essere progressive: la soglia della pianura deve essere inferiore a quella della collina, che deve essere inferiore a quella della montagna.",
 
     // Parametri tab
     param_engine_label: "Motore di calcolo",
@@ -531,7 +532,8 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     error_grid_cells_positive: "The number of cells must be positive.",
     error_rossmo_params: "Invalid Rossmo formula parameters (f, g, k or B).",
     error_hub_dist_threshold: "The outlier threshold must be positive.",
-    error_env_weight_invalid: "Every environmental weight or threshold must be a valid number (negative values and values greater than 1 are allowed; blank fields, NaN and infinity are not).",
+    error_env_weight_invalid: "Every environmental weight must be a finite number greater than or equal to 0. DEM thresholds must be finite numbers. Blank fields, NaN and infinity are not allowed.",
+    error_env_threshold_order: "DEM elevation thresholds must be progressive: the flatland threshold must be lower than the hillside threshold, which must be lower than the mountain threshold.",
   },
 };
 

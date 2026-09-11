@@ -7,6 +7,7 @@ import type { DemLayerSpec, VectorLayerSpec } from "@/workers/pyodide.worker";
 import { buildShapefileBundle } from "@/lib/shapefileBundle";
 import { readFileBytes } from "@/lib/readFileBytes";
 import { parseWeightInput } from "@/lib/parseWeightInput";
+import { isDemThresholdOrderValid } from "@/lib/validateEnvWeights";
 import { setPayload, deletePayload } from "@/lib/binaryPayloadStore";
 import { useT } from "@/lib/i18n";
 import { useState } from "react";
@@ -228,6 +229,11 @@ function DemFields({ id, layer }: { id: string; layer: DemLayerSpec }) {
     (e: React.ChangeEvent<HTMLInputElement>) =>
       updateLayer(id, { [key]: parseWeightInput(e.target.value) } as Partial<DemLayerSpec>);
 
+  const thresholdsFinite =
+    Number.isFinite(layer.pianuraMin) && Number.isFinite(layer.collinaMin) && Number.isFinite(layer.montagnaMin);
+  const orderInvalid =
+    thresholdsFinite && !isDemThresholdOrderValid(layer.pianuraMin, layer.collinaMin, layer.montagnaMin);
+
   return (
     <div className="grid grid-cols-1 gap-x-4 gap-y-3 text-sm sm:grid-cols-[1fr_1fr]">
       <span className="hidden text-xs font-medium text-foreground-muted sm:block">{t("dem_threshold_col_label")}</span>
@@ -241,6 +247,7 @@ function DemFields({ id, layer }: { id: string; layer: DemLayerSpec }) {
           className={inputClass}
           defaultValue={layer.pianuraMin}
           onChange={num("pianuraMin")}
+          aria-invalid={orderInvalid}
         />
       </label>
       <label className="flex flex-col gap-1">
@@ -262,6 +269,7 @@ function DemFields({ id, layer }: { id: string; layer: DemLayerSpec }) {
           className={inputClass}
           defaultValue={layer.collinaMin}
           onChange={num("collinaMin")}
+          aria-invalid={orderInvalid}
         />
       </label>
       <label className="flex flex-col gap-1">
@@ -283,6 +291,7 @@ function DemFields({ id, layer }: { id: string; layer: DemLayerSpec }) {
           className={inputClass}
           defaultValue={layer.montagnaMin}
           onChange={num("montagnaMin")}
+          aria-invalid={orderInvalid}
         />
       </label>
       <label className="flex flex-col gap-1">
@@ -295,6 +304,12 @@ function DemFields({ id, layer }: { id: string; layer: DemLayerSpec }) {
           onChange={num("highWeight")}
         />
       </label>
+
+      {orderInvalid && (
+        <span role="alert" className="col-span-1 text-xs text-red-600 dark:text-red-400 sm:col-span-2">
+          {t("error_env_threshold_order")}
+        </span>
+      )}
 
       <div className="hidden sm:block" />
       <label className="flex flex-col gap-1">

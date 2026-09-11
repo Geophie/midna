@@ -33,9 +33,9 @@ function vectorLayer(over: Partial<VectorLayerSpec> = {}): VectorLayerSpec {
   };
 }
 
-describe("validateEnvWeights — accepts every finite value, rejects only non-finite/missing", () => {
-  it("A. accepts negative, zero, sub-1, 1, and >1 finite weights unchanged", () => {
-    for (const w of [-10, -1, -0.25, 0, 0.373, 1, 2.5, 100]) {
+describe("validateEnvWeights — weights reject negatives, DEM thresholds allow negatives", () => {
+  it("A. accepts zero, sub-1, 1, and >1 finite weights", () => {
+    for (const w of [0, 0.373, 1, 2.5, 100]) {
       expect(validateEnvWeights([vectorLayer({ intersectWeight: w, noIntersectWeight: w })])).toBeNull();
       expect(validateEnvWeights([demLayer({ lowWeight: w, midWeight: w, highWeight: w, nodataWeight: w })])).toBeNull();
     }
@@ -44,6 +44,21 @@ describe("validateEnvWeights — accepts every finite value, rejects only non-fi
   it("B. an explicit 0 is valid (not treated as missing)", () => {
     expect(validateEnvWeights([vectorLayer({ intersectWeight: 0, noIntersectWeight: 0 })])).toBeNull();
     expect(validateEnvWeights([demLayer({ lowWeight: 0, midWeight: 0, highWeight: 0, nodataWeight: 0 })])).toBeNull();
+  });
+
+  it("H. rejects negative weights", () => {
+    expect(validateEnvWeights([vectorLayer({ intersectWeight: -0.1 })])).toBe("error_env_weight_invalid");
+    expect(validateEnvWeights([vectorLayer({ noIntersectWeight: -1 })])).toBe("error_env_weight_invalid");
+    expect(validateEnvWeights([demLayer({ lowWeight: -0.1 })])).toBe("error_env_weight_invalid");
+    expect(validateEnvWeights([demLayer({ midWeight: -1 })])).toBe("error_env_weight_invalid");
+    expect(validateEnvWeights([demLayer({ highWeight: -10 })])).toBe("error_env_weight_invalid");
+    expect(validateEnvWeights([demLayer({ nodataWeight: -0.25 })])).toBe("error_env_weight_invalid");
+  });
+
+  it("I. accepts negative finite DEM thresholds (sub-sea-level elevations)", () => {
+    expect(validateEnvWeights([demLayer({ pianuraMin: -100, collinaMin: 50, montagnaMin: 400 })])).toBeNull();
+    expect(validateEnvWeights([demLayer({ pianuraMin: -200, collinaMin: -50, montagnaMin: 350 })])).toBeNull();
+    expect(validateEnvWeights([demLayer({ pianuraMin: -500, collinaMin: -100, montagnaMin: -10 })])).toBeNull();
   });
 
   it("C. a blank field (parseWeightInput('') -> NaN) is rejected, not coerced to 0", () => {
@@ -71,6 +86,27 @@ describe("validateEnvWeights — accepts every finite value, rejects only non-fi
     const broken = vectorLayer();
     delete (broken as Partial<VectorLayerSpec>).intersectWeight;
     expect(validateEnvWeights([broken as VectorLayerSpec])).toBe("error_env_weight_invalid");
+  });
+
+  it("J. accepts strictly progressive DEM thresholds", () => {
+    expect(validateEnvWeights([demLayer({ pianuraMin: 0, collinaMin: 250, montagnaMin: 350 })])).toBeNull();
+    expect(validateEnvWeights([demLayer({ pianuraMin: -100, collinaMin: 50, montagnaMin: 400 })])).toBeNull();
+    expect(validateEnvWeights([demLayer({ pianuraMin: -500, collinaMin: -100, montagnaMin: 50 })])).toBeNull();
+  });
+
+  it("K. rejects non-progressive or equal DEM thresholds", () => {
+    const cases: Array<[number, number, number]> = [
+      [300, 250, 350],
+      [0, 400, 350],
+      [0, 250, 250],
+      [250, 250, 350],
+      [400, 300, 200],
+    ];
+    for (const [pianuraMin, collinaMin, montagnaMin] of cases) {
+      expect(validateEnvWeights([demLayer({ pianuraMin, collinaMin, montagnaMin })])).toBe(
+        "error_env_threshold_order",
+      );
+    }
   });
 
   it("parseWeightInput keeps locale comma and finite values, no clamping", () => {
