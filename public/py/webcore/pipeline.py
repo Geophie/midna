@@ -233,6 +233,13 @@ async def run(params, progress_cb):
             # key here means broken parameter propagation and must fail loudly
             # rather than silently substituting a default the user never chose.
             # weights.py keeps its own defaults for direct/API callers.
+            #
+            # lowerBands/upperBands are the only DEM fields read with .get()
+            # rather than strict [key] access: they are optional extra
+            # elevation classes (see src/lib/validateEnvWeights.ts), so their
+            # absence means "no extra classes configured", not a propagation
+            # bug — every existing LayerSpec/test fixture that predates this
+            # feature omits them entirely.
             scored_gdf = weights.applyDemWeights(
                 scored_gdf,
                 dem_values,
@@ -243,6 +250,8 @@ async def run(params, progress_cb):
                 midWeight=layer["midWeight"],
                 highWeight=layer["highWeight"],
                 nodataWeight=layer["nodataWeight"],
+                lowerBands=[(b["threshold"], b["weight"]) for b in layer.get("lowerBands", [])],
+                upperBands=[(b["threshold"], b["weight"]) for b in layer.get("upperBands", [])],
             )
             scored_gdf = scored_gdf.rename(columns={"w_dem": col_name})
             # Diagnostic parity with the desktop app's per-layer debug log

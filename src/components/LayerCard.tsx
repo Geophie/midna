@@ -3,17 +3,33 @@
 import { Card } from "@/components/ui/Card";
 import { FileField } from "@/components/ui/FileField";
 import { useAppStore, type LayerEntry } from "@/lib/store";
-import type { DemLayerSpec, VectorLayerSpec } from "@/workers/pyodide.worker";
+import type { DemExtraBand, DemLayerSpec, VectorLayerSpec } from "@/workers/pyodide.worker";
 import { buildShapefileBundle } from "@/lib/shapefileBundle";
 import { readFileBytes } from "@/lib/readFileBytes";
 import { parseWeightInput } from "@/lib/parseWeightInput";
-import { isDemThresholdOrderValid } from "@/lib/validateEnvWeights";
+import { demThresholdSequence, isDemThresholdOrderValid } from "@/lib/validateEnvWeights";
 import { setPayload, deletePayload } from "@/lib/binaryPayloadStore";
 import { useT } from "@/lib/i18n";
 import { useState } from "react";
 
 const inputClass =
   "rounded-lg border border-border bg-background px-2 py-1 text-base text-foreground focus:outline-none focus:ring-2 focus:ring-accent sm:text-sm";
+
+const addBandButtonClass =
+  "cursor-pointer rounded-full border border-border px-3 py-1 text-xs transition duration-150 hover:bg-accent hover:text-accent-foreground active:scale-95";
+
+// Local UI id for a new band's React key — never sent to Python (see
+// DemExtraBand in pyodide.worker.ts).
+let nextBandId = 0;
+function newBandId(): string {
+  return `band-${nextBandId++}`;
+}
+
+// Fixed, deterministic initial offset for a newly added band: always
+// strictly beyond the current outermost threshold on that side, so the new
+// class starts in valid order without reordering anything else. The user
+// can then retype it to whatever value they need.
+const NEW_BAND_STEP = 100;
 
 export function LayerCard({ entry }: { entry: LayerEntry }) {
   const t = useT();
@@ -229,15 +245,45 @@ function DemFields({ id, layer }: { id: string; layer: DemLayerSpec }) {
     (e: React.ChangeEvent<HTMLInputElement>) =>
       updateLayer(id, { [key]: parseWeightInput(e.target.value) } as Partial<DemLayerSpec>);
 
-  const thresholdsFinite =
-    Number.isFinite(layer.pianuraMin) && Number.isFinite(layer.collinaMin) && Number.isFinite(layer.montagnaMin);
-  const orderInvalid =
-    thresholdsFinite && !isDemThresholdOrderValid(layer.pianuraMin, layer.collinaMin, layer.montagnaMin);
+  const sequence = demThresholdSequence(layer);
+  const thresholdsFinite = sequence.every((v) => Number.isFinite(v));
+  const orderInvalid = thresholdsFinite && !isDemThresholdOrderValid(sequence);
+
+  function addLowerBand() {
+    const lowest = layer.lowerBands[0]?.threshold ?? layer.pianuraMin;
+    const band: DemExtraBand = { id: newBandId(), threshold: lowest - NEW_BAND_STEP, weight: 0 };
+    updateLayer(id, { lowerBands: [band, ...layer.lowerBands] });
+  }
+  function addUpperBand() {
+    const highest = layer.upperBands[layer.upperBands.length - 1]?.threshold ?? layer.montagnaMin;
+    const band: DemExtraBand = { id: newBandId(), threshold: highest + NEW_BAND_STEP, weight: 0 };
+    updateLayer(id, { upperBands: [...layer.upperBands, band] });
+  }
+  function removeBand(side: "lowerBands" | "upperBands", bandId: string) {
+    updateLayer(id, { [side]: layer[side].filter((b) => b.id !== bandId) } as Partial<DemLayerSpec>);
+  }
+  function patchBand(side: "lowerBands" | "upperBands", bandId: string, patch: Partial<DemExtraBand>) {
+    updateLayer(id, {
+      [side]: layer[side].map((b) => (b.id === bandId ? { ...b, ...patch } : b)),
+    } as Partial<DemLayerSpec>);
+  }
 
   return (
     <div className="grid grid-cols-1 gap-x-4 gap-y-3 text-sm sm:grid-cols-[1fr_1fr]">
       <span className="hidden text-xs font-medium text-foreground-muted sm:block">{t("dem_threshold_col_label")}</span>
       <span className="hidden text-xs font-medium text-foreground-muted sm:block">{t("weight_col_label")}</span>
+
+      {layer.lowerBands.map((band, i) => (
+        <DemBandRow
+          key={band.id}
+          label={t("dem_lower_band_label", { n: layer.lowerBands.length - i })}
+          band={band}
+          orderInvalid={orderInvalid}
+          onChangeThreshold={(v) => patchBand("lowerBands", band.id, { threshold: v })}
+          onChangeWeight={(v) => patchBand("lowerBands", band.id, { weight: v })}
+          onRemove={() => removeBand("lowerBands", band.id)}
+        />
+      ))}
 
       <label className="flex flex-col gap-1">
         <span>{t("terrain_flatland")} <span className="text-foreground-muted sm:hidden">— {t("dem_threshold_col_label")}</span></span>
@@ -305,6 +351,18 @@ function DemFields({ id, layer }: { id: string; layer: DemLayerSpec }) {
         />
       </label>
 
+      {layer.upperBands.map((band, i) => (
+        <DemBandRow
+          key={band.id}
+          label={t("dem_upper_band_label", { n: i + 1 })}
+          band={band}
+          orderInvalid={orderInvalid}
+          onChangeThreshold={(v) => patchBand("upperBands", band.id, { threshold: v })}
+          onChangeWeight={(v) => patchBand("upperBands", band.id, { weight: v })}
+          onRemove={() => removeBand("upperBands", band.id)}
+        />
+      ))}
+
       {orderInvalid && (
         <span role="alert" className="col-span-1 text-xs text-red-600 dark:text-red-400 sm:col-span-2">
           {t("error_env_threshold_order")}
@@ -322,7 +380,77 @@ function DemFields({ id, layer }: { id: string; layer: DemLayerSpec }) {
           onChange={num("nodataWeight")}
         />
       </label>
+
+      <div className="col-span-1 flex flex-wrap gap-2 sm:col-span-2">
+        <button type="button" onClick={addLowerBand} className={addBandButtonClass}>
+          {t("add_dem_lower_band")}
+        </button>
+        <button type="button" onClick={addUpperBand} className={addBandButtonClass}>
+          {t("add_dem_upper_band")}
+        </button>
+      </div>
     </div>
+  );
+}
+
+function DemBandRow({
+  label,
+  band,
+  orderInvalid,
+  onChangeThreshold,
+  onChangeWeight,
+  onRemove,
+}: {
+  label: string;
+  band: DemExtraBand;
+  orderInvalid: boolean;
+  onChangeThreshold: (value: number) => void;
+  onChangeWeight: (value: number) => void;
+  onRemove: () => void;
+}) {
+  const t = useT();
+  return (
+    <>
+      {/* A plain div, not <label>: BUTTON is a labelable element too, and one
+          preceding the <input> in tree order inside the same <label> would
+          become ITS labeled control instead of the input (HTMLLabelElement.control
+          picks the first labelable descendant) — aria-label on the input
+          already gives it a correct, unambiguous accessible name. */}
+      <div className="flex flex-col gap-1">
+        <span className="flex items-center justify-between gap-2">
+          <span>
+            {label} <span className="text-foreground-muted sm:hidden">— {t("dem_threshold_col_label")}</span>
+          </span>
+          <button
+            type="button"
+            onClick={onRemove}
+            className="cursor-pointer rounded-full px-2 py-0.5 text-xs text-foreground-muted transition-colors hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+          >
+            {t("remove_elevation_class")}
+          </button>
+        </span>
+        <input
+          type="text"
+          inputMode="decimal"
+          className={inputClass}
+          defaultValue={band.threshold}
+          onChange={(e) => onChangeThreshold(parseWeightInput(e.target.value))}
+          aria-invalid={orderInvalid}
+          aria-label={`${label} ${t("dem_threshold_col_label")}`}
+        />
+      </div>
+      <label className="flex flex-col gap-1">
+        <span>{label} <span className="text-foreground-muted sm:hidden">— {t("weight_col_label")}</span></span>
+        <input
+          type="text"
+          inputMode="decimal"
+          className={inputClass}
+          defaultValue={band.weight}
+          onChange={(e) => onChangeWeight(parseWeightInput(e.target.value))}
+          aria-label={`${label} ${t("weight_col_label")}`}
+        />
+      </label>
+    </>
   );
 }
 

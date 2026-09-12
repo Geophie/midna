@@ -117,6 +117,15 @@ function getEngine(): Promise<PyodideEngine> {
   return engineReadyPromise;
 }
 
+// An optional DEM elevation class below Plain or above Mountain. `id` is
+// local UI bookkeeping only (stable React key across add/remove/reorder) —
+// it never crosses into the Python pipeline, only threshold/weight do.
+export interface DemExtraBand {
+  id: string;
+  threshold: number;
+  weight: number;
+}
+
 export interface DemLayerSpec {
   type: "dem";
   name: string;
@@ -130,6 +139,12 @@ export interface DemLayerSpec {
   midWeight: number;
   highWeight: number;
   nodataWeight: number;
+  // Extra elevation bands, ordered ascending by threshold: lowerBands run
+  // from the lowest threshold up to (but excluding) pianuraMin; upperBands
+  // run from just above montagnaMin upward. Empty arrays reproduce the
+  // original three-class behaviour exactly (see public/py/core/weights.py).
+  lowerBands: DemExtraBand[];
+  upperBands: DemExtraBand[];
 }
 
 export interface VectorFileEntry {
@@ -326,6 +341,9 @@ json.dumps(inspect_analysis_crs(${JSON.stringify(crs)}))
           midWeight: layer.midWeight,
           highWeight: layer.highWeight,
           nodataWeight: layer.nodataWeight,
+          // band.id is UI-only (React key); the pipeline only needs the pair.
+          lowerBands: layer.lowerBands.map((b) => ({ threshold: b.threshold, weight: b.weight })),
+          upperBands: layer.upperBands.map((b) => ({ threshold: b.threshold, weight: b.weight })),
         };
       }
 

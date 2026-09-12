@@ -23,7 +23,8 @@
     "test:golden:minor": "node tests/golden/minor-findings.mjs",
     "test:golden:outside-aoi": "node tests/golden/outside-aoi-anchor.mjs",
     "test:golden:envweight": "node tests/golden/env-weight-strict.mjs",
-    "test:golden:all": "npm run test:golden && npm run test:golden:enhanced && npm run test:golden:normalize && npm run test:golden:csv && npm run test:golden:aoi && npm run test:golden:crs && npm run test:golden:eligible && npm run test:golden:hillside && npm run test:golden:minor && npm run test:golden:outside-aoi && npm run test:golden:envweight"
+    "test:golden:dembands": "node tests/golden/dem-extra-bands.mjs",
+    "test:golden:all": "npm run test:golden && npm run test:golden:enhanced && npm run test:golden:normalize && npm run test:golden:csv && npm run test:golden:aoi && npm run test:golden:crs && npm run test:golden:eligible && npm run test:golden:hillside && npm run test:golden:minor && npm run test:golden:outside-aoi && npm run test:golden:envweight && npm run test:golden:dembands"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",

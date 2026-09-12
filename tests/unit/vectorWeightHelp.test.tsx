@@ -37,6 +37,8 @@ const demEntry = {
     midWeight: 0,
     highWeight: 0,
     nodataWeight: 0,
+    lowerBands: [],
+    upperBands: [],
   } satisfies DemLayerSpec,
 };
 

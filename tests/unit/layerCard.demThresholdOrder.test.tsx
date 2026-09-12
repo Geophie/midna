@@ -5,7 +5,7 @@ import { useAppStore } from "@/lib/store";
 import type { DemLayerSpec } from "@/workers/pyodide.worker";
 
 const ORDER_ERROR =
-  "DEM elevation thresholds must be progressive: the flatland threshold must be lower than the hillside threshold, which must be lower than the mountain threshold.";
+  "DEM elevation thresholds must be strictly increasing from the lowest to the highest elevation class.";
 
 afterEach(() => {
   cleanup();

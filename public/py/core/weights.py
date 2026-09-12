@@ -1,7 +1,12 @@
 import numpy as np
 import geopandas as gpd
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Sequence, Tuple
+
+# An optional DEM elevation band below Plain or above Mountain: a
+# (threshold, weight) pair using the same minimum-elevation convention as
+# the three core classes. See _classifyDemValues.
+DemBand = Tuple[float, float]
 
 
 def _classifyDemValues(
@@ -12,16 +17,39 @@ def _classifyDemValues(
     lowWeight: float = 0.4,
     midWeight: float = 0.8,
     highWeight: float = 0.0,
-    nodataWeight: float = 0.0
+    nodataWeight: float = 0.0,
+    lowerBands: Optional[Sequence[DemBand]] = None,
+    upperBands: Optional[Sequence[DemBand]] = None,
 ) -> np.ndarray:
 
-    # Minimum-elevation thresholds: cells below pianuraMin (and NaN) keep the nodata weight.
+    # Full minimum-elevation sequence: optional bands below Plain, the three
+    # core classes (Plain/Hillside/Mountain), optional bands above Mountain.
+    # Callers (pipeline.py, and ultimately src/lib/validateEnvWeights.ts on
+    # the browser side) are responsible for strict ascending order across
+    # the whole sequence — this function only classifies, it does not
+    # validate or sort.
+    bands: list[DemBand] = (
+        list(lowerBands or [])
+        + [(pianuraMin, lowWeight), (collinaMin, midWeight), (montagnaMin, highWeight)]
+        + list(upperBands or [])
+    )
+    thresholds = np.array([t for t, _ in bands], dtype=float)
+    bandWeights = np.array([w for _, w in bands], dtype=float)
+
+    # Cells below the lowest configured threshold (and NaN) keep the nodata weight.
     weights = np.full(len(demValues), nodataWeight, dtype=float)
     valid = ~np.isnan(demValues)
+    validValues = demValues[valid]
 
-    weights[valid & (demValues >= pianuraMin) & (demValues < collinaMin)] = lowWeight
-    weights[valid & (demValues >= collinaMin) & (demValues < montagnaMin)] = midWeight
-    weights[valid & (demValues >= montagnaMin)] = highWeight
+    # threshold_i <= elevation < threshold_(i+1), and elevation >= highest
+    # threshold falls in the last (highest) band — searchsorted(side="right")
+    # finds the rightmost threshold <= value in one vectorized pass; NaN is
+    # excluded above so it never reaches the search.
+    idx = np.searchsorted(thresholds, validValues, side="right") - 1
+    inRange = idx >= 0
+    validWeights = np.full(len(validValues), nodataWeight, dtype=float)
+    validWeights[inRange] = bandWeights[idx[inRange]]
+    weights[valid] = validWeights
 
     return weights
 
@@ -114,7 +142,9 @@ def applyDemWeights(
     lowWeight: float = 0.4,
     midWeight: float = 0.8,
     highWeight: float = 0.0,
-    nodataWeight: float = 0.0
+    nodataWeight: float = 0.0,
+    lowerBands: Optional[Sequence[DemBand]] = None,
+    upperBands: Optional[Sequence[DemBand]] = None,
 ) -> gpd.GeoDataFrame:
 
     """
@@ -125,6 +155,12 @@ def applyDemWeights(
         pianuraMin <= elevation < collinaMin (0 <= elevation < 250m) : w = 0.4 (flatland)
         collinaMin <= elevation < montagnaMin (250 <= elevation < 350m) : w = 0.8 (hillside)
         montagnaMin <= elevation (>=350m) : w = 0.0 (mountain)
+
+    lowerBands / upperBands optionally extend this with extra DEM elevation
+    bands below Plain and above Mountain, each a (threshold, weight) pair.
+    With none supplied (the default), behaviour is identical to the three
+    core classes above. See _classifyDemValues for the full ordering
+    contract.
 
     Parameters:
         gridGdf   : GeoDataFrame of grid cells
@@ -147,7 +183,9 @@ def applyDemWeights(
         lowWeight=lowWeight,
         midWeight=midWeight,
         highWeight=highWeight,
-        nodataWeight=nodataWeight
+        nodataWeight=nodataWeight,
+        lowerBands=lowerBands,
+        upperBands=upperBands,
     )
 
     result = gridGdf.copy()
@@ -280,4 +318,30 @@ if __name__ == "__main__":
     )
     # below pianuraMin and NaN -> nodata; [0,250) -> low; [250,350) -> mid; >=350 -> high
     assert list(_w) == [-1.0, 0.4, 0.4, 0.4, 0.8, 0.8, 0.0, 0.0, -1.0], list(_w)
+
+    # Same defaults, no extra bands passed at all -> numerically identical
+    # (backward compatibility: lowerBands/upperBands default to None).
+    _w_default_call = _classifyDemValues(
+        _vals, pianuraMin=0.0, montagnaMin=350.0,
+        lowWeight=0.4, midWeight=0.8, highWeight=0.0, nodataWeight=-1.0,
+        lowerBands=None, upperBands=None,
+    )
+    assert list(_w_default_call) == list(_w), list(_w_default_call)
+
+    # Optional lower/upper bands: -200 < -50 < 0 < 250 < 350 < 700 < 1200.
+    _vals_extra = np.array([
+        -201.0, -200.0, -199.999, -50.0, -49.999, 0.0, 249.999, 250.0,
+        349.999, 350.0, 699.999, 700.0, 1199.999, 1200.0, 2000.0, np.nan,
+    ])
+    _w_extra = _classifyDemValues(
+        _vals_extra, pianuraMin=0.0, collinaMin=250.0, montagnaMin=350.0,
+        lowWeight=0.4, midWeight=0.8, highWeight=0.5, nodataWeight=-1.0,
+        lowerBands=[(-200.0, 0.2), (-50.0, 0.3)],
+        upperBands=[(700.0, 0.2), (1200.0, 0.1)],
+    )
+    assert list(_w_extra) == [
+        -1.0, 0.2, 0.2, 0.3, 0.3, 0.4, 0.4, 0.8,
+        0.8, 0.5, 0.5, 0.2, 0.2, 0.1, 0.1, -1.0,
+    ], list(_w_extra)
+
     print("weights self-check OK")

@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { validateEnvWeights } from "@/lib/validateEnvWeights";
 import { parseWeightInput } from "@/lib/parseWeightInput";
-import type { DemLayerSpec, VectorLayerSpec } from "@/workers/pyodide.worker";
+import type { DemExtraBand, DemLayerSpec, VectorLayerSpec } from "@/workers/pyodide.worker";
+
+function band(threshold: number, weight = 0.1): DemExtraBand {
+  return { id: `band-${threshold}`, threshold, weight };
+}
 
 function demLayer(over: Partial<DemLayerSpec> = {}): DemLayerSpec {
   return {
@@ -17,6 +21,8 @@ function demLayer(over: Partial<DemLayerSpec> = {}): DemLayerSpec {
     midWeight: 0.8,
     highWeight: 0,
     nodataWeight: 0,
+    lowerBands: [],
+    upperBands: [],
     ...over,
   };
 }
@@ -107,6 +113,55 @@ describe("validateEnvWeights — weights reject negatives, DEM thresholds allow 
         "error_env_threshold_order",
       );
     }
+  });
+
+  it("L. accepts a full valid lower+core+upper sequence: -200 < -50 < 0 < 250 < 350 < 700 < 1200", () => {
+    expect(
+      validateEnvWeights([
+        demLayer({
+          lowerBands: [band(-200), band(-50)],
+          pianuraMin: 0,
+          collinaMin: 250,
+          montagnaMin: 350,
+          upperBands: [band(700), band(1200)],
+        }),
+      ]),
+    ).toBeNull();
+  });
+
+  it("M. rejects invalid combined sequences (no auto-sort, no auto-fix)", () => {
+    const cases: Array<Partial<DemLayerSpec>> = [
+      // -50, -200, 0, 250, 350 — lower bands out of order
+      { lowerBands: [band(-50), band(-200)] },
+      // -100, 50, 0, 250, 350 — lower band above pianuraMin
+      { lowerBands: [band(-100), band(50)] },
+      // 0, 250, 350, 300 — upper band below montagnaMin
+      { upperBands: [band(300)] },
+      // 0, 250, 350, 700, 600 — upper bands out of order
+      { upperBands: [band(700), band(600)] },
+      // 0, 250, 250 — collinaMin equals montagnaMin
+      { collinaMin: 250, montagnaMin: 250 },
+      // 0, 250, 350, 350 — upper band equals montagnaMin
+      { upperBands: [band(350)] },
+      // lower A = -100, lower B = -200 — duplicate-style inversion among lower bands
+      { lowerBands: [band(-100), band(-200)] },
+    ];
+    for (const over of cases) {
+      expect(validateEnvWeights([demLayer(over)])).toBe("error_env_threshold_order");
+    }
+  });
+
+  it("N. rejects a non-finite or negative weight on an optional band", () => {
+    expect(validateEnvWeights([demLayer({ lowerBands: [band(-200, NaN)] })])).toBe("error_env_weight_invalid");
+    expect(validateEnvWeights([demLayer({ upperBands: [band(700, -0.1)] })])).toBe("error_env_weight_invalid");
+  });
+
+  it("O. rejects a non-finite threshold on an optional band", () => {
+    expect(validateEnvWeights([demLayer({ lowerBands: [band(Infinity)] })])).toBe("error_env_weight_invalid");
+  });
+
+  it("P. accepts an explicit zero weight and a negative threshold on an optional band", () => {
+    expect(validateEnvWeights([demLayer({ lowerBands: [band(-200, 0)] })])).toBeNull();
   });
 
   it("parseWeightInput keeps locale comma and finite values, no clamping", () => {

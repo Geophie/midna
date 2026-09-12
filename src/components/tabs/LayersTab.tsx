@@ -20,6 +20,8 @@ function newDemLayer(): DemLayerSpec {
     midWeight: 0,
     highWeight: 0,
     nodataWeight: 0,
+    lowerBands: [],
+    upperBands: [],
   };
 }
 
