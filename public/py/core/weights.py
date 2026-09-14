@@ -8,6 +8,41 @@ from typing import Optional, Sequence, Tuple
 # the three core classes. See _classifyDemValues.
 DemBand = Tuple[float, float]
 
+# Diagnostic states distinguishing *why* a cell got the nodata weight —
+# genuine raster NoData/NaN vs. a finite elevation below every configured
+# threshold. Both currently still resolve to nodataWeight numerically (see
+# _classifyDemValues); these labels exist so the two analytically different
+# cases are never indistinguishable internally. See _classifyDemStates.
+DEM_STATE_NODATA = "dem_nodata"
+DEM_STATE_BELOW_RANGE = "dem_below_configured_range"
+DEM_STATE_IN_RANGE = "dem_in_range"
+
+
+def _demBandThresholds(
+    pianuraMin: float,
+    collinaMin: float,
+    montagnaMin: float,
+    lowWeight: float,
+    midWeight: float,
+    highWeight: float,
+    lowerBands: Optional[Sequence[DemBand]],
+    upperBands: Optional[Sequence[DemBand]],
+) -> Tuple[np.ndarray, np.ndarray]:
+    # Full minimum-elevation sequence: optional bands below Plain, the three
+    # core classes (Plain/Hillside/Mountain), optional bands above Mountain.
+    # Callers (pipeline.py, and ultimately src/lib/validateEnvWeights.ts on
+    # the browser side) are responsible for strict ascending order across
+    # the whole sequence — this only assembles the sequence, it does not
+    # validate or sort.
+    bands: list[DemBand] = (
+        list(lowerBands or [])
+        + [(pianuraMin, lowWeight), (collinaMin, midWeight), (montagnaMin, highWeight)]
+        + list(upperBands or [])
+    )
+    thresholds = np.array([t for t, _ in bands], dtype=float)
+    bandWeights = np.array([w for _, w in bands], dtype=float)
+    return thresholds, bandWeights
+
 
 def _classifyDemValues(
     demValues: np.ndarray,
@@ -22,19 +57,10 @@ def _classifyDemValues(
     upperBands: Optional[Sequence[DemBand]] = None,
 ) -> np.ndarray:
 
-    # Full minimum-elevation sequence: optional bands below Plain, the three
-    # core classes (Plain/Hillside/Mountain), optional bands above Mountain.
-    # Callers (pipeline.py, and ultimately src/lib/validateEnvWeights.ts on
-    # the browser side) are responsible for strict ascending order across
-    # the whole sequence — this function only classifies, it does not
-    # validate or sort.
-    bands: list[DemBand] = (
-        list(lowerBands or [])
-        + [(pianuraMin, lowWeight), (collinaMin, midWeight), (montagnaMin, highWeight)]
-        + list(upperBands or [])
+    thresholds, bandWeights = _demBandThresholds(
+        pianuraMin, collinaMin, montagnaMin, lowWeight, midWeight, highWeight,
+        lowerBands, upperBands,
     )
-    thresholds = np.array([t for t, _ in bands], dtype=float)
-    bandWeights = np.array([w for _, w in bands], dtype=float)
 
     # Cells below the lowest configured threshold (and NaN) keep the nodata weight.
     weights = np.full(len(demValues), nodataWeight, dtype=float)
@@ -52,6 +78,46 @@ def _classifyDemValues(
     weights[valid] = validWeights
 
     return weights
+
+
+def _classifyDemStates(
+    demValues: np.ndarray,
+    pianuraMin: float = 0.0,
+    collinaMin: float = 250.0,
+    montagnaMin: float = 350.0,
+    lowWeight: float = 0.4,
+    midWeight: float = 0.8,
+    highWeight: float = 0.0,
+    lowerBands: Optional[Sequence[DemBand]] = None,
+    upperBands: Optional[Sequence[DemBand]] = None,
+) -> np.ndarray:
+    """
+    Per-cell diagnostic companion to _classifyDemValues: classifies *why* a
+    cell would receive the nodata weight, without changing any weight math.
+
+    Returns an array of DEM_STATE_* strings, one per input value:
+        DEM_STATE_NODATA      : NaN (genuine raster NoData)
+        DEM_STATE_BELOW_RANGE : finite, but below the lowest configured
+                                 threshold (analytically distinct from NoData
+                                 even though both share nodataWeight today)
+        DEM_STATE_IN_RANGE    : finite and classified into a real band
+    """
+
+    thresholds, _ = _demBandThresholds(
+        pianuraMin, collinaMin, montagnaMin, lowWeight, midWeight, highWeight,
+        lowerBands, upperBands,
+    )
+
+    states = np.full(len(demValues), DEM_STATE_NODATA, dtype=object)
+    valid = ~np.isnan(demValues)
+    validValues = demValues[valid]
+
+    idx = np.searchsorted(thresholds, validValues, side="right") - 1
+    validStates = np.full(len(validValues), DEM_STATE_BELOW_RANGE, dtype=object)
+    validStates[idx >= 0] = DEM_STATE_IN_RANGE
+    states[valid] = validStates
+
+    return states
 
 
 def clipDemToAoi(demPath: str, aoiGdf: gpd.GeoDataFrame, outputPath: Optional[str] = None) -> str:
@@ -343,5 +409,26 @@ if __name__ == "__main__":
         -1.0, 0.2, 0.2, 0.3, 0.3, 0.4, 0.4, 0.8,
         0.8, 0.5, 0.5, 0.2, 0.2, 0.1, 0.1, -1.0,
     ], list(_w_extra)
+
+    # Diagnostic states: NaN and a finite below-range value both still get
+    # nodataWeight numerically, but must classify to different DEM_STATE_*
+    # labels — that is the whole point of _classifyDemStates.
+    _vals_states = np.array([np.nan, -300.0, -200.0, -199.999, 0.0])
+    _diag_kwargs = dict(
+        pianuraMin=0.0, collinaMin=250.0, montagnaMin=350.0,
+        lowWeight=0.4, midWeight=0.8, highWeight=0.0,
+        lowerBands=[(-200.0, 0.2)],
+    )
+    _states = _classifyDemStates(_vals_states, **_diag_kwargs)
+    assert list(_states) == [
+        DEM_STATE_NODATA, DEM_STATE_BELOW_RANGE, DEM_STATE_IN_RANGE,
+        DEM_STATE_IN_RANGE, DEM_STATE_IN_RANGE,
+    ], list(_states)
+
+    _weights_for_states = _classifyDemValues(_vals_states, nodataWeight=-1.0, **_diag_kwargs)
+    # NaN and the below-range value share the same nodataWeight (backward
+    # compatibility) yet were just shown to carry different diagnostics.
+    assert _weights_for_states[0] == _weights_for_states[1] == -1.0
+    assert _states[0] != _states[1]
 
     print("weights self-check OK")

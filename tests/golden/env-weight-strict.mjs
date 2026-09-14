@@ -2,6 +2,12 @@
 // access. A fully-populated valid LayerSpec produces the exact same weighted
 // surface as before (weights.py math untouched); a LayerSpec missing a required
 // field now fails loudly instead of silently substituting a pipeline default.
+//
+// Also covers the post-weighting finite-value safeguard: individually finite,
+// non-negative environmental weights whose product overflows float64 must
+// fail the run explicitly (error_env_overflow) before normalization ever
+// gets a chance to silently zero the overflow out — while a very large but
+// still-finite product keeps running normally.
 
 import { loadPyodide } from "pyodide";
 import fs from "node:fs";
@@ -42,6 +48,7 @@ for p in ("/", "/webcore"):
         sys.path.insert(0, p)
 
 import core.aoi as aoi
+import core.normalize as normalize
 import pipeline
 
 crimes = aoi.loadCrimesCsv("/crimes.csv", latCol="Latitude", lonCol="Longitude")
@@ -109,6 +116,40 @@ dem_missing_raises = await raises([dem_missing])
 incl_missing_raises = await raises([incl_missing])
 excl_missing_raises = await raises([excl_missing])
 
+# --- Post-weighting finite-value safeguard --------------------------------
+# Two inclusion layers covering the whole AOI, each individually finite and
+# >= 0 (1e200 passes validateEnvWeights.ts's per-field contract), whose
+# product (1e200 * 1e200 = 1e400) exceeds float64 range regardless of the
+# Rossmo score magnitude — deterministic, not machine-specific.
+gpd.GeoDataFrame({"name": ["full"]}, geometry=[box(minx, miny, maxx, maxy)], crs="EPSG:4326").to_file("/full.geojson", driver="GeoJSON")
+overflow_layer = dict(type="inclusion", name="ov", path="/full.geojson",
+                       intersectWeight=1e200, noIntersectWeight=1e200)
+
+overflow_message = None
+try:
+    await pipeline.run(dict(base, layers=[overflow_layer, overflow_layer]), no_cancel)
+    overflow_raised = False
+except Exception as e:
+    overflow_raised = True
+    overflow_message = str(e)
+overflow_error_key_present = bool(overflow_message and "error_env_overflow" in overflow_message)
+
+# A very large but still float64-safe product (1e100) must keep running
+# normally end to end, including normalization.
+safe_layer = dict(type="inclusion", name="safe", path="/full.geojson",
+                   intersectWeight=1e100, noIntersectWeight=1e100)
+safe_out = await pipeline.run(dict(base, layers=[safe_layer]), no_cancel)
+safe_g = gpd.GeoDataFrame.from_features(json.loads(safe_out["enhanced_geojson"])["features"])
+safe_raw_finite = bool(np.isfinite(safe_g["score_enhanced_raw"].to_numpy(dtype=float)).all())
+safe_normalized_max = float(safe_g["score_enhanced"].max())
+
+# Prove the guard is load-bearing: absent it, normalize.py's existing
+# finite-fallback would silently turn the overflow into an apparently valid
+# zero score rather than surfacing it.
+demo_gdf = gpd.GeoDataFrame({"score_enhanced": [1.0, np.inf, 2.0]})
+demo_normalized = normalize.normalizeScores(demo_gdf, col="score_enhanced")
+normalize_silently_zeroes_inf = bool(demo_normalized["score_enhanced"].iloc[1] == 0.0)
+
 json.dumps({
     "raw_is_score_times_weights": raw_ok,
     "dem_weight_values": dem_vals,
@@ -120,6 +161,12 @@ json.dumps({
     "dem_missing_raises": dem_missing_raises,
     "incl_missing_raises": incl_missing_raises,
     "excl_missing_raises": excl_missing_raises,
+    "overflow_raised": overflow_raised,
+    "overflow_message": overflow_message,
+    "overflow_error_key_present": overflow_error_key_present,
+    "safe_raw_finite": safe_raw_finite,
+    "safe_normalized_max": safe_normalized_max,
+    "normalize_silently_zeroes_inf": normalize_silently_zeroes_inf,
 })
 `));
 
@@ -134,6 +181,11 @@ json.dumps({
     [result.dem_missing_raises, "DEM LayerSpec missing lowWeight raises (no silent fallback)"],
     [result.incl_missing_raises, "inclusion LayerSpec missing intersectWeight raises"],
     [result.excl_missing_raises, "exclusion LayerSpec missing noIntersectWeight raises"],
+    [result.overflow_raised, "environmental multiplication overflowing float64 fails the run explicitly"],
+    [result.overflow_error_key_present, `overflow failure carries the error_env_overflow key (got ${JSON.stringify(result.overflow_message ?? null)})`],
+    [result.safe_raw_finite, "a very large but still float64-safe weight product stays finite"],
+    [result.safe_normalized_max === 100, `the safe large-weight run still normalizes to max 100 (got ${result.safe_normalized_max})`],
+    [result.normalize_silently_zeroes_inf, "sanity: normalize.py's own finite-fallback would have silently zeroed the overflow — this is exactly what the pre-normalization guard prevents from being reached"],
   ];
 
   let ok = true;

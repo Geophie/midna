@@ -81,6 +81,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     error_hub_dist_threshold: "La soglia outlier deve essere positiva.",
     error_env_weight_invalid: "Ogni peso ambientale deve essere un numero finito maggiore o uguale a 0. Le soglie DEM devono essere numeri finiti. Non sono ammessi campi vuoti, NaN o infinito.",
     error_env_threshold_order: "Le soglie altimetriche del DEM devono essere strettamente crescenti dalla classe di quota più bassa a quella più alta.",
+    error_env_overflow: "La ponderazione ambientale ha prodotto uno score non finito. Riduci uno o più pesi ambientali ed esegui nuovamente l'analisi.",
 
     // Parametri tab
     param_engine_label: "Motore di calcolo",
@@ -544,6 +545,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     error_hub_dist_threshold: "The outlier threshold must be positive.",
     error_env_weight_invalid: "Every environmental weight must be a finite number greater than or equal to 0. DEM thresholds must be finite numbers. Blank fields, NaN and infinity are not allowed.",
     error_env_threshold_order: "DEM elevation thresholds must be strictly increasing from the lowest to the highest elevation class.",
+    error_env_overflow: "Environmental weighting produced a non-finite score. Reduce one or more environmental weights and run the analysis again.",
   },
 };
 

@@ -47,6 +47,11 @@ describe("validateEnvWeights — weights reject negatives, DEM thresholds allow 
     }
   });
 
+  it("Q. no upper bound: a very large finite weight (whose product could overflow float64) is still valid here — that is caught after multiplication, not at this per-field check", () => {
+    expect(validateEnvWeights([vectorLayer({ intersectWeight: 1e200, noIntersectWeight: 1e200 })])).toBeNull();
+    expect(validateEnvWeights([demLayer({ lowWeight: 1e200, midWeight: 1e200, highWeight: 1e200 })])).toBeNull();
+  });
+
   it("B. an explicit 0 is valid (not treated as missing)", () => {
     expect(validateEnvWeights([vectorLayer({ intersectWeight: 0, noIntersectWeight: 0 })])).toBeNull();
     expect(validateEnvWeights([demLayer({ lowWeight: 0, midWeight: 0, highWeight: 0, nodataWeight: 0 })])).toBeNull();

@@ -260,14 +260,36 @@ async def run(params, progress_cb):
             # two can be compared side by side when debugging a divergence.
             valid_dem = dem_values[~np.isnan(dem_values)]
             nodata_count = int(np.isnan(dem_values).sum())
+            # dem_nodata (NaN/raster NoData) vs dem_below_configured_range
+            # (finite elevation below the lowest configured threshold) share
+            # nodataWeight numerically but are analytically distinct — see
+            # weights._classifyDemStates. Surfaced here through the same
+            # execution log used for the nodata count above, rather than a
+            # new UI element.
+            dem_states = weights._classifyDemStates(
+                dem_values,
+                pianuraMin=layer["pianuraMin"],
+                collinaMin=layer["collinaMin"],
+                montagnaMin=layer["montagnaMin"],
+                lowWeight=layer["lowWeight"],
+                midWeight=layer["midWeight"],
+                highWeight=layer["highWeight"],
+                lowerBands=[(b["threshold"], b["weight"]) for b in layer.get("lowerBands", [])],
+                upperBands=[(b["threshold"], b["weight"]) for b in layer.get("upperBands", [])],
+            )
+            below_range_count = int(np.sum(dem_states == weights.DEM_STATE_BELOW_RANGE))
             if len(valid_dem):
                 await progress_cb(
                     0.55,
                     f"DEM '{label}': elevation min={valid_dem.min():.0f}m "
-                    f"max={valid_dem.max():.0f}m mean={valid_dem.mean():.1f}m nodata={nodata_count}",
+                    f"max={valid_dem.max():.0f}m mean={valid_dem.mean():.1f}m "
+                    f"nodata={nodata_count} below_range={below_range_count}",
                 )
             else:
-                await progress_cb(0.55, f"DEM '{label}': nessun valore valido, nodata={nodata_count}")
+                await progress_cb(
+                    0.55,
+                    f"DEM '{label}': nessun valore valido, nodata={nodata_count} below_range={below_range_count}",
+                )
         else:
             layer_gdf = _load_geodata(layer["path"], params["lat_col"], params["lon_col"],
                                        params["input_crs"], params["analysis_crs"])
@@ -313,6 +335,14 @@ async def run(params, progress_cb):
         scored_gdf["effective_weight"] = scored_gdf[weight_cols].prod(axis=1)
         scored_gdf["zero_weight_applied"] = scored_gdf[weight_cols].eq(0).any(axis=1)
         scored_gdf["score_enhanced_raw"] = scored_gdf["score_enhanced"]
+        # Each environmental weight is individually finite and >= 0 (enforced
+        # client-side by validateEnvWeights.ts), but multiplying several very
+        # large finite weights into the Rossmo score can still overflow to
+        # +/-inf, or produce NaN (e.g. 0 * inf). Left unchecked, normalize.py
+        # would silently zero that out below — fail loudly here instead,
+        # before normalization, Gini, ranking or HSP ever see it.
+        if not np.isfinite(scored_gdf["score_enhanced_raw"].to_numpy(dtype=float)).all():
+            raise ValueError("error_env_overflow")
         score_col = "score_enhanced"
 
     # --- Step 5: Gini (on raw scores, before normalization) + normalize ------

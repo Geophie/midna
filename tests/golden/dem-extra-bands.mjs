@@ -8,6 +8,9 @@
 //    extra band receives that band's weight, and a run with no lowerBands/
 //    upperBands keys in the LayerSpec (as every pre-existing fixture
 //    constructs it) matches a run with them explicitly empty.
+// 4. _classifyDemStates: NaN (genuine NoData) and a finite elevation below
+//    the lowest configured threshold both still resolve to nodataWeight
+//    numerically, but must classify to different diagnostic states.
 
 import { loadPyodide } from "pyodide";
 import fs from "node:fs";
@@ -83,6 +86,26 @@ empty = weights._classifyDemValues(base_vals, lowerBands=[], upperBands=[])
 assert np.array_equal(legacy, omitted, equal_nan=True), (list(legacy), list(omitted))
 assert np.array_equal(legacy, empty, equal_nan=True), (list(legacy), list(empty))
 
+# --- 4. DEM below-configured-range vs true NoData diagnostic states ---
+# lowerBands=[(-200, 0.2)], pianuraMin=0, collinaMin=250, montagnaMin=350.
+diag_vals = np.array([np.nan, -300.0, -200.0, -199.999, 0.0])
+diag_kwargs = dict(
+    pianuraMin=0.0, collinaMin=250.0, montagnaMin=350.0,
+    lowWeight=0.4, midWeight=0.8, highWeight=0.0,
+    lowerBands=[(-200.0, 0.2)],
+)
+diag_states = weights._classifyDemStates(diag_vals, **diag_kwargs)
+diag_weights = weights._classifyDemValues(diag_vals, nodataWeight=-1.0, **diag_kwargs)
+
+states_match_expected = list(diag_states) == [
+    weights.DEM_STATE_NODATA, weights.DEM_STATE_BELOW_RANGE, weights.DEM_STATE_IN_RANGE,
+    weights.DEM_STATE_IN_RANGE, weights.DEM_STATE_IN_RANGE,
+]
+# NaN and the below-range value share nodataWeight numerically (backward
+# compatibility) yet must carry different diagnostic states.
+nodata_and_below_range_share_weight = bool(diag_weights[0] == diag_weights[1] == -1.0)
+nodata_and_below_range_states_differ = bool(diag_states[0] != diag_states[1])
+
 async def no_cancel(frac, stage):
     return False
 
@@ -154,6 +177,10 @@ json.dumps({
     "lower_e2e_weights": lower_e2e_weights,
     "upper_e2e_weights": upper_e2e_weights,
     "backward_compat_ok": backward_compat_ok,
+    "diag_states": list(diag_states),
+    "diag_states_match_expected": states_match_expected,
+    "diag_nodata_and_below_range_share_weight": nodata_and_below_range_share_weight,
+    "diag_nodata_and_below_range_states_differ": nodata_and_below_range_states_differ,
 })
 `));
 
@@ -171,6 +198,18 @@ json.dumps({
     [
       result.backward_compat_ok,
       "no-extra-class run is numerically identical whether lowerBands/upperBands keys are omitted or explicitly empty",
+    ],
+    [
+      result.diag_states_match_expected,
+      `NaN/-300/-200/-199.999/0 classify as nodata/below_range/in_range/in_range/in_range (got ${JSON.stringify(result.diag_states)})`,
+    ],
+    [
+      result.diag_nodata_and_below_range_share_weight,
+      "NaN and a finite below-range value still share the same numerical nodataWeight (backward compatibility)",
+    ],
+    [
+      result.diag_nodata_and_below_range_states_differ,
+      "...but NaN and a finite below-range value classify to different diagnostic states",
     ],
   ];
 
