@@ -3,7 +3,6 @@ import { TabNav, type TabDef } from "@/components/ui/TabNav";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { LanguageToggle } from "@/components/ui/LanguageToggle";
 import { Toggle } from "@/components/ui/Toggle";
-import { AtlantaNotice } from "@/components/AtlantaNotice";
 import { useT } from "@/lib/i18n";
 import { IoLogoGithub } from "react-icons/io5";
 
@@ -128,7 +127,6 @@ export function AppShell({
             <h1 className="text-xl font-semibold">MIDNA</h1>
             <p className="text-sm text-foreground-muted">{t("app_subtitle")}</p>
           </div>
-          <AtlantaNotice />
         </div>
         <TabNav tabs={tabs} activeTab={activeTab} onChange={onTabChange} />
         <div className="flex flex-nowrap items-center justify-end gap-3">
