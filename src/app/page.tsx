@@ -74,10 +74,11 @@ export default function Home() {
       .map((l) => (l.layer.type === "dem" ? { ...l.layer, fileBytes: getPayload(l.id) } : l.layer))
       .filter((l) => l.enabled && (l.type === "dem" ? l.fileBytes.length > 0 : l.files.length > 0));
 
-    // Structural check before booting Pyodide: every environmental weight /
-    // threshold must be a finite number (rejects missing / blank / non-numeric /
-    // NaN / ±Infinity). Any finite value — negative, zero, or > 1 — is accepted
-    // as-is; the pipeline then reads each field with strict key access.
+    // Structural check before booting Pyodide: every environmental weight must
+    // be a finite number >= 0 and every DEM threshold a finite number, with the
+    // whole threshold sequence strictly increasing (rejects missing / blank /
+    // non-numeric / NaN / ±Infinity / negative weights / out-of-order
+    // thresholds). pipeline._validate_env_layers repeats the same checks in Python.
     const weightErrorKey = validateEnvWeights(validLayers);
     if (weightErrorKey) {
       alert(t(weightErrorKey));

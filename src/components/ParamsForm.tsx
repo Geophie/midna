@@ -1,7 +1,7 @@
 "use client";
 
-import { useForm } from "react-hook-form";
-import { useEffect, useRef, useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
+import { useEffect, useState } from "react";
 import type { ParamsFormValues } from "@/lib/paramsSchema";
 import { parseLocaleFloat } from "@/lib/parseLocaleFloat";
 import { getPyodideApi } from "@/lib/pyodideClient";
@@ -14,6 +14,9 @@ const inputClass =
 
 type CrsWarningState = "geographic" | "projected" | "invalid" | "unknown";
 
+const fallbackCrsState = (crs: string): CrsWarningState =>
+  crs === DEFAULT_ANALYSIS_CRS.code && DEFAULT_ANALYSIS_CRS.isGeographic ? "geographic" : "unknown";
+
 export function ParamsForm() {
   const t = useT();
   const params = useAppStore((s) => s.params);
@@ -21,11 +24,13 @@ export function ParamsForm() {
   const disabled = useAppStore((s) => s.status === "running" || s.status === "loading-engine");
   const gridFileName = useAppStore((s) => s.gridFileName);
 
-  const { register, watch, setValue } = useForm<ParamsFormValues>({
+  const { register, control, setValue } = useForm<ParamsFormValues>({
     defaultValues: params,
   });
 
-  const watched = watch();
+  // useWatch, not watch(): the React Compiler cannot memoize watch() safely.
+  // Every field is present via defaultValues, so the full shape holds.
+  const watched = useWatch({ control }) as ParamsFormValues;
 
   // Params are validated only when the user starts the analysis (see
   // page.tsx's handleRun) — showing schema errors live under each field
@@ -36,44 +41,44 @@ export function ParamsForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(watched)]);
 
-  const bAuto = watch("bAuto");
-  const analysisCrs = watch("analysisCrs");
-  const useOutliers = watch("useOutliers");
-  const useNormalize = watch("useNormalize");
-  const useGini = watch("useGini");
-  const engine = watch("engine");
+  const bAuto = watched.bAuto;
+  const analysisCrs = watched.analysisCrs;
+  const useOutliers = watched.useOutliers;
+  const useNormalize = watched.useNormalize;
+  const useGini = watched.useGini;
+  const engine = watched.engine;
   const gridDisabled = disabled || Boolean(gridFileName);
-  const [crsWarningState, setCrsWarningState] = useState<CrsWarningState>(() => (
-    analysisCrs === DEFAULT_ANALYSIS_CRS.code && DEFAULT_ANALYSIS_CRS.isGeographic ? "geographic" : "unknown"
-  ));
-  const currentAnalysisCrs = useRef(analysisCrs);
-  currentAnalysisCrs.current = analysisCrs;
+  // The inspection result is stored with the CRS it belongs to; until the
+  // current CRS has been inspected, the fallback state is derived in render.
+  const [crsInspection, setCrsInspection] = useState<{ crs: string; state: CrsWarningState } | null>(null);
+  const crsWarningState =
+    crsInspection?.crs === analysisCrs ? crsInspection.state : fallbackCrsState(analysisCrs);
 
   useEffect(() => {
     const inspectedCrs = analysisCrs;
-    const knownDefaultGeographic =
-      inspectedCrs === DEFAULT_ANALYSIS_CRS.code && DEFAULT_ANALYSIS_CRS.isGeographic;
-    setCrsWarningState(
-      knownDefaultGeographic ? "geographic" : "unknown",
-    );
+    let cancelled = false;
     const timer = window.setTimeout(() => {
       getPyodideApi()
         .inspectAnalysisCrs(inspectedCrs)
         .then((inspection) => {
-          if (currentAnalysisCrs.current !== inspectedCrs) return;
-          setCrsWarningState(
-            !inspection.valid ? "invalid" : inspection.isGeographic ? "geographic" : "projected",
-          );
+          if (cancelled) return;
+          setCrsInspection({
+            crs: inspectedCrs,
+            state: !inspection.valid ? "invalid" : inspection.isGeographic ? "geographic" : "projected",
+          });
         })
         .catch((error) => {
-          if (currentAnalysisCrs.current !== inspectedCrs) return;
+          if (cancelled) return;
           // Advisory inspection must never classify an unknown CRS as projected
           // or interfere with the normal analysis path.
           console.error("[crs] advisory inspection failed", error);
-          setCrsWarningState(knownDefaultGeographic ? "geographic" : "unknown");
+          setCrsInspection({ crs: inspectedCrs, state: fallbackCrsState(inspectedCrs) });
         });
     }, 250);
-    return () => window.clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, [analysisCrs]);
 
   const gridFileSuffix = gridFileName ? (

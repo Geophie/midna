@@ -30,10 +30,10 @@ def _demBandThresholds(
 ) -> Tuple[np.ndarray, np.ndarray]:
     # Full minimum-elevation sequence: optional bands below Plain, the three
     # core classes (Plain/Hillside/Mountain), optional bands above Mountain.
-    # Callers (pipeline.py, and ultimately src/lib/validateEnvWeights.ts on
-    # the browser side) are responsible for strict ascending order across
-    # the whole sequence — this only assembles the sequence, it does not
-    # validate or sort.
+    # Strict ascending order across the whole sequence is enforced upstream
+    # by pipeline._validate_env_layers (Python) and
+    # src/lib/validateEnvWeights.ts (browser) — this only assembles the
+    # sequence, it does not validate or sort.
     bands: list[DemBand] = (
         list(lowerBands or [])
         + [(pianuraMin, lowWeight), (collinaMin, midWeight), (montagnaMin, highWeight)]
@@ -44,6 +44,11 @@ def _demBandThresholds(
     return thresholds, bandWeights
 
 
+# The keyword defaults below (and in applyDemWeights / _classifyDemStates)
+# only serve direct callers of this module (tests, scripts). The web app
+# never relies on them: pipeline.py passes every DEM field explicitly, and
+# the UI creates new DEM layers with all weights at 0 (newDemLayer in
+# src/components/tabs/LayersTab.tsx) so the user must choose them.
 def _classifyDemValues(
     demValues: np.ndarray,
     pianuraMin: float = 0.0,

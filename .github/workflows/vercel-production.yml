@@ -1,9 +1,12 @@
 name: Vercel Production Deployment
 
+# Deploy only after the CI workflow succeeded on a push to main, never in
+# parallel with it: a push that breaks tests or the build must not ship.
 on:
-  push:
-    branches:
-      - main
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
 
 permissions:
   contents: read
@@ -14,14 +17,19 @@ env:
 
 jobs:
   deploy-production:
+    # event == 'push' skips CI runs of pull requests targeting main.
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' }}
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          # Deploy exactly the commit the CI tested, not a newer one.
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Install Vercel CLI
-        run: npm install --global vercel@latest
+        run: npm install --global vercel@66.5.0
 
       - name: Pull Vercel environment
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
