@@ -14,6 +14,8 @@
 // 5. Non-finite DEM pixels (+/-inf, undeclared NaN): dem_mean averages only
 //    finite pixels, and the raw enhanced_geojson string parses as strict JSON
 //    (no bare Infinity/-Infinity/NaN tokens that JSON.parse rejects).
+// 6. DEM states exposed in the result: per-cell dem_state, dem_summary counts,
+//    and NoData vs below-range cells sharing nodataWeight (0.07) numerically.
 
 import { loadPyodide } from "pyodide";
 import fs from "node:fs";
@@ -198,7 +200,38 @@ layer_nonfinite = dict(
 )
 out_nonfinite = await pipeline.run(dict(pyparams_base, layers=[layer_nonfinite]), no_cancel)
 
+# --- 6. DEM states exposed in the result ---
+# Block (rows 0-1, cols 0-1) is declared NoData; block (rows 2-3, cols 0-1) is
+# -100 (below pianuraMin=0); the other two blocks are 100 (in range).
+arr_states = np.full((4, 4), 100.0, dtype=np.float64)
+arr_states[0:2, 0:2] = -9999.0
+arr_states[2:4, 0:2] = -100.0
+with rasterio.open(
+    "/dem-states.tif", "w", driver="GTiff", height=4, width=4, count=1,
+    dtype="float64", crs="EPSG:4326", nodata=-9999.0,
+    transform=from_origin(minx, maxy, (maxx - minx) / 4, (maxy - miny) / 4),
+) as dst:
+    dst.write(arr_states, 1)
+layer_states = dict(
+    type="dem", name="dem", path="/dem-states.tif",
+    pianuraMin=0.0, collinaMin=250.0, montagnaMin=350.0,
+    lowWeight=0.4, midWeight=0.8, highWeight=0.0, nodataWeight=0.07,
+)
+out_states = await pipeline.run(dict(pyparams_base, layers=[layer_states]), no_cancel)
+state_cells = [
+    {"dem_state": f["properties"].get("dem_state"), "dem_mean": f["properties"].get("dem_mean"), "w_0_dem": f["properties"].get("w_0_dem")}
+    for f in json.loads(out_states["enhanced_geojson"])["features"]
+]
+state_w = {c["dem_state"]: c["w_0_dem"] for c in state_cells}
+nodata_and_below_share_w = bool(
+    state_w.get(weights.DEM_STATE_NODATA) == state_w.get(weights.DEM_STATE_BELOW_RANGE) == 0.07
+)
+
 json.dumps({
+    "dem_state_cells": state_cells,
+    "dem_state_values": [c["dem_state"] for c in state_cells],
+    "dem_summary": out_states["dem_summary"],
+    "nodata_and_below_share_w": nodata_and_below_share_w,
     "lower_e2e_weights": lower_e2e_weights,
     "upper_e2e_weights": upper_e2e_weights,
     "backward_compat_ok": backward_compat_ok,
@@ -224,6 +257,14 @@ json.dumps({
   }
   const nonfiniteMixedCount = nonfiniteProps.filter((p) => p.dem_mean === 100 && p.w_0_dem === 0.4).length;
   const nonfiniteNodataCount = nonfiniteProps.filter((p) => p.dem_mean === null && p.w_0_dem === 0.1).length;
+
+  // --- 6. DEM states exposed in the result (order-independent) ---
+  const stateCells = result.dem_state_cells;
+  const summary = result.dem_summary || {};
+  const nodataCell = stateCells.find((c) => c.dem_state === "dem_nodata");
+  const belowCell = stateCells.find((c) => c.dem_state === "dem_below_configured_range");
+  const inRangeCells = stateCells.filter((c) => c.dem_state === "dem_in_range");
+  const near = (a, b) => typeof a === "number" && Math.abs(a - b) < 1e-9;
 
   const checks = [
     [
@@ -265,6 +306,34 @@ json.dumps({
     [
       nonfiniteNodataCount === 1,
       `non-finite DEM run: 1 cell with no finite pixel has dem_mean null, w_0_dem 0.1 (got ${nonfiniteNodataCount})`,
+    ],
+    [
+      stateCells.length === 4 && stateCells.every((c) => typeof c.dem_state === "string"),
+      `6. every feature has a dem_state (got ${JSON.stringify(result.dem_state_values)})`,
+    ],
+    [
+      JSON.stringify(summary) === JSON.stringify({ nodata: 1, below_range: 1, in_range: 2, total: 4 }),
+      `6. dem_summary equals {nodata:1, below_range:1, in_range:2, total:4} (got ${JSON.stringify(summary)})`,
+    ],
+    [
+      nodataCell !== undefined && nodataCell.dem_mean === null,
+      `6. dem_nodata cell has dem_mean null (got ${JSON.stringify(nodataCell)})`,
+    ],
+    [
+      belowCell !== undefined && near(belowCell.dem_mean, -100),
+      `6. dem_below_configured_range cell has dem_mean -100 (got ${JSON.stringify(belowCell)})`,
+    ],
+    [
+      nodataCell !== undefined && near(nodataCell.w_0_dem, 0.07),
+      `6. dem_nodata cell has w_0_dem 0.07 (got ${JSON.stringify(nodataCell)})`,
+    ],
+    [
+      belowCell !== undefined && near(belowCell.w_0_dem, 0.07) && result.nodata_and_below_share_w === true,
+      `6. dem_below_configured_range cell has w_0_dem 0.07, shared with NoData (got ${JSON.stringify(belowCell)})`,
+    ],
+    [
+      inRangeCells.length === 2 && inRangeCells.every((c) => near(c.w_0_dem, 0.4)),
+      `6. both dem_in_range cells have w_0_dem 0.4 (got ${JSON.stringify(inRangeCells)})`,
     ],
   ];
 

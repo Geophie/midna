@@ -356,7 +356,7 @@ The default classification distinguishes:
    •   lowland: 0 ≤ elevation < 250 m;
    •   hillside: 250 ≤ elevation < 350 m;
    •   mountain: ≥350 m;
-   •   cells without data.
+   •   cells without data or with elevation below the lowest threshold.
 These current application defaults should not be interpreted as universal
 geomorphological classifications.
 In a new geographic area, thresholds and weights should be reassessed

@@ -338,7 +338,7 @@ La classificazione predefinita distingue:
    •   pianura: 0 ≤ elevazione < 250 m;
    •   collina: 250 ≤ elevazione < 350 m;
    •   montagna: ≥350 m;
-   •   celle senza dato.
+   •   celle senza dato o con quota inferiore alla soglia minima.
 Questi sono i default correnti dell’applicazione e non devono essere interpretati come
 classificazioni geomorfologiche universali.
 In una nuova area geografica, le soglie e i pesi dovrebbero essere rivalutati rispetto alla

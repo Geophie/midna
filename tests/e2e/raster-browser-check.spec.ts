@@ -25,7 +25,10 @@ test("rasterio + geopandas coexist correctly in a real browser (not just Node)",
   const result = await page.evaluate(async (sources) => {
     // @ts-expect-error dynamic runtime import of a static asset, not bundled
     const { loadPyodide } = await import("/pyodide/pyodide.mjs");
-    const pyodide = await loadPyodide({ indexURL: "/pyodide/" });
+    const pyodide = await loadPyodide({
+      indexURL: "/pyodide/",
+      packageBaseUrl: "https://cdn.jsdelivr.net/pyodide/v314.0.2/full/",
+    });
     await pyodide.loadPackage(["rasterio", "fiona", "geopandas", "shapely"]);
 
     pyodide.FS.mkdirTree("/core");

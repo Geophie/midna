@@ -137,7 +137,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     terrain_flatland: "Pianura",
     terrain_hillside: "Collina",
     terrain_mountain: "Montagna",
-    terrain_nodata: "Nodata",
+    terrain_nodata: "NoData / sotto la soglia minima",
     add_dem_lower_band: "+ Aggiungi classe altimetrica inferiore",
     add_dem_upper_band: "+ Aggiungi classe altimetrica superiore",
     dem_lower_band_label: "Quota inferiore {n}",
@@ -227,7 +227,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
       "La griglia definisce il numero di celle in cui viene suddivisa l'area (più celle = maggiore risoluzione ma calcolo più lento; disabilitata se è stato caricato un reticolo personalizzato). Il campo Padding bounding box aggiunge un margine percentuale per lato attorno all'area di studio generata automaticamente, così la griglia non termina esattamente sul crimine più esterno (default 10%; ignorato con reticolo personalizzato). I parametri f, g e k della formula di Rossmo si impostano qui; B può essere calcolato automaticamente dai dati oppure inserito manualmente. Puoi anche disattivare la normalizzazione dello score [0–100] e/o il calcolo del coefficiente di Gini.",
     help_layers_title: "Scheda Layers",
     help_layers_1:
-      "I layer aggiuntivi modificano la superficie di probabilità moltiplicando lo score di ogni cella per un peso. Un layer DEM (elevazione) assegna pesi diversi in base a tre fasce di altitudine (pianura: 0 ≤ elevazione < 250 m; collina: 250 ≤ elevazione < 350 m; montagna: ≥350 m) più un peso per le celle senza dato; puoi opzionalmente aggiungere altre classi altimetriche sotto la pianura o sopra la montagna, purché le soglie restino strettamente crescenti. I layer di inclusione/esclusione sono poligoni (es. parchi, quartieri residenziali, cimiteri): assegnano un peso alle celle che intersecano la geometria e un peso diverso a quelle che non la intersecano — usali per escludere zone improbabili (es. laghi, aree industriali) o per includere solo zone plausibili (es. aree residenziali). Ogni layer può essere disattivato temporaneamente senza rimuoverlo, tramite la casella di spunta sulla sua scheda.",
+      "I layer aggiuntivi modificano la superficie di probabilità moltiplicando lo score di ogni cella per un peso. Un layer DEM (elevazione) assegna pesi diversi in base a tre fasce di altitudine (pianura: 0 ≤ elevazione < 250 m; collina: 250 ≤ elevazione < 350 m; montagna: ≥350 m) più un peso per le celle senza dato o con quota inferiore alla soglia minima; puoi opzionalmente aggiungere altre classi altimetriche sotto la pianura o sopra la montagna, purché le soglie restino strettamente crescenti. I layer di inclusione/esclusione sono poligoni (es. parchi, quartieri residenziali, cimiteri): assegnano un peso alle celle che intersecano la geometria e un peso diverso a quelle che non la intersecano — usali per escludere zone improbabili (es. laghi, aree industriali) o per includere solo zone plausibili (es. aree residenziali). Ogni layer può essere disattivato temporaneamente senza rimuoverlo, tramite la casella di spunta sulla sua scheda.",
     help_layers_2:
       "Attenzione, layer DEM su griglie grandi: il calcolo dell'elevazione media per cella richiede un'operazione raster separata per ogni cella della griglia, quindi il tempo cresce linearmente col numero di celle — con il reticolo predefinito (200×200 = 40.000 celle) un layer DEM può richiedere diversi minuti nel browser.",
     help_layers_3:
@@ -381,7 +381,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
     terrain_flatland: "Flatland",
     terrain_hillside: "Hillside",
     terrain_mountain: "Mountain",
-    terrain_nodata: "NoData",
+    terrain_nodata: "NoData / below minimum threshold",
     add_dem_lower_band: "+ Add lower elevation class",
     add_dem_upper_band: "+ Add higher elevation class",
     dem_lower_band_label: "Lower elevation {n}",
@@ -470,7 +470,7 @@ export const STRINGS: Record<Lang, Record<string, string>> = {
       "The grid defines how many cells the area is divided into (more cells = higher resolution but slower computation; disabled if a custom grid has been loaded). The Outer bounding-box padding field adds a percentage margin per side around the automatically generated area of interest, so the grid does not end exactly on the outermost crime (default 10%; ignored with a custom grid). The f, g and k parameters of the Rossmo formula are set here; B can be computed automatically from the data or entered manually. You can also turn off score normalization [0–100] and/or the Gini coefficient computation.",
     help_layers_title: "Layers tab",
     help_layers_1:
-      "Additional layers modify the probability surface by multiplying each cell's score by a weight. A DEM (elevation) layer assigns different weights based on three altitude bands (flatland: 0 ≤ elevation < 250 m; hillside: 250 ≤ elevation < 350 m; mountain: ≥350 m) plus a weight for cells with no data; you can optionally add further elevation classes below flatland or above mountain, as long as the thresholds stay strictly increasing. Inclusion/exclusion layers are polygons (e.g. parks, residential neighborhoods, cemeteries): they assign one weight to cells that intersect the geometry and a different weight to those that don't — use them to exclude unlikely areas (e.g. lakes, industrial zones) or to include only plausible ones (e.g. residential areas). Each layer can be temporarily disabled without removing it, via the checkbox on its card.",
+      "Additional layers modify the probability surface by multiplying each cell's score by a weight. A DEM (elevation) layer assigns different weights based on three altitude bands (flatland: 0 ≤ elevation < 250 m; hillside: 250 ≤ elevation < 350 m; mountain: ≥350 m) plus a weight for cells with no data or with elevation below the lowest threshold; you can optionally add further elevation classes below flatland or above mountain, as long as the thresholds stay strictly increasing. Inclusion/exclusion layers are polygons (e.g. parks, residential neighborhoods, cemeteries): they assign one weight to cells that intersect the geometry and a different weight to those that don't — use them to exclude unlikely areas (e.g. lakes, industrial zones) or to include only plausible ones (e.g. residential areas). Each layer can be temporarily disabled without removing it, via the checkbox on its card.",
     help_layers_2:
       "Careful with DEM layers on large grids: computing the average elevation per cell requires a separate raster operation for every grid cell, so the time grows linearly with the number of cells — with the default grid (200×200 = 40,000 cells) a DEM layer can take several minutes in the browser.",
     help_layers_3:

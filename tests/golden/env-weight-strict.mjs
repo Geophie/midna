@@ -13,6 +13,7 @@
 // src/lib/validateEnvWeights.ts, so invalid DEM thresholds/weights and
 // out-of-order threshold sequences fail with error_env_weight_invalid or
 // error_env_threshold_order when run() is called directly.
+// Section J: a positive score whose weighted product underflows to 0 is treated like an explicit weight 0 (zero_weight_applied, excluded, anchor_excluded).
 
 import { loadPyodide } from "pyodide";
 import fs from "node:fs";
@@ -179,6 +180,30 @@ threshold_order_cases = {
 weight_invalid_messages = {name: await run_error([layer]) for name, layer in weight_invalid_cases.items()}
 threshold_order_messages = {name: await run_error([layer]) for name, layer in threshold_order_cases.items()}
 
+# J: positive underflow is treated like weight 0. Two layers of 1e-200 give a
+# product of 1e-400, which underflows to 0.0 for every cell; 1e-100 each gives
+# 1e-200, still representable (control). Anchor = mean of the crimes points.
+anchor_lat = float(crimes["Latitude"].mean())
+anchor_lon = float(crimes["Longitude"].mean())
+
+def uf_layer(w):
+    return dict(type="inclusion", name="uf", path="/full.geojson",
+                intersectWeight=w, noIntersectWeight=w)
+
+async def uf_run(w):
+    out_j = await pipeline.run(dict(base, layers=[uf_layer(w), uf_layer(w)],
+                                    anchor_lat=anchor_lat, anchor_lon=anchor_lon), no_cancel)
+    flags = gpd.GeoDataFrame.from_features(json.loads(out_j["enhanced_geojson"])["features"])["zero_weight_applied"].astype(bool)
+    return dict(
+        all_flagged=bool(flags.all()),
+        any_flagged=bool(flags.any()),
+        status=out_j["enhanced_eval"]["status"],
+        eligible_area_fraction=float(out_j["enhanced_eval"]["eligible_area_fraction"]),
+    )
+
+uf_underflow = await uf_run(1e-200)
+uf_control = await uf_run(1e-100)
+
 json.dumps({
     "raw_is_score_times_weights": raw_ok,
     "dem_weight_values": dem_vals,
@@ -198,6 +223,8 @@ json.dumps({
     "normalize_silently_zeroes_inf": normalize_silently_zeroes_inf,
     "weight_invalid_messages": weight_invalid_messages,
     "threshold_order_messages": threshold_order_messages,
+    "uf_underflow": uf_underflow,
+    "uf_control": uf_control,
 })
 `));
 
@@ -225,6 +252,12 @@ json.dumps({
       typeof msg === "string" && msg.includes("error_env_threshold_order"),
       `I threshold_order ${name}: message contains error_env_threshold_order (got ${JSON.stringify(msg)})`,
     ]),
+    [result.uf_underflow.all_flagged, `J underflow: every enhanced cell has zero_weight_applied True (got ${JSON.stringify(result.uf_underflow)})`],
+    [result.uf_underflow.status === "anchor_excluded", `J underflow: anchor status is anchor_excluded (got ${JSON.stringify(result.uf_underflow)})`],
+    [result.uf_underflow.eligible_area_fraction === 0, `J underflow: eligible_area_fraction === 0 (got ${JSON.stringify(result.uf_underflow)})`],
+    [!result.uf_control.any_flagged, `J control: no cell has zero_weight_applied True (got ${JSON.stringify(result.uf_control)})`],
+    [result.uf_control.status === "valid", `J control: anchor status is valid (got ${JSON.stringify(result.uf_control)})`],
+    [result.uf_control.eligible_area_fraction === 1, `J control: eligible_area_fraction === 1 (got ${JSON.stringify(result.uf_control)})`],
   ];
 
   let ok = true;

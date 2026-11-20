@@ -253,6 +253,7 @@ async def run(params, progress_cb):
         return {"status": "cancelled"}
     weight_cols = []
     dem_seen = False
+    dem_summary = None
     for idx, layer in enumerate(params.get("layers", [])):
         raw_name = (layer.get("name") or "").strip()
         col_name = f"w_{idx}_{raw_name}" if raw_name else f"w_{idx}"
@@ -315,6 +316,14 @@ async def run(params, progress_cb):
                 upperBands=[(b["threshold"], b["weight"]) for b in layer.get("upperBands", [])],
             )
             below_range_count = int(np.sum(dem_states == weights.DEM_STATE_BELOW_RANGE))
+            # Numerically neutral: exposes why a cell got nodataWeight.
+            scored_gdf["dem_state"] = dem_states
+            dem_summary = {
+                "nodata": nodata_count,
+                "below_range": below_range_count,
+                "in_range": int(len(dem_states)) - nodata_count - below_range_count,
+                "total": int(len(dem_states)),
+            }
             if len(valid_dem):
                 await progress_cb(
                     0.55,
@@ -370,7 +379,12 @@ async def run(params, progress_cb):
     if weight_cols:
         scored_gdf = weights.applyWeights(scored_gdf, weight_cols)
         scored_gdf["effective_weight"] = scored_gdf[weight_cols].prod(axis=1)
-        scored_gdf["zero_weight_applied"] = scored_gdf[weight_cols].eq(0).any(axis=1)
+        # A positive score whose weighted product underflows to exactly 0 is as
+        # excluded as one hit by an explicit weight 0.
+        scored_gdf["zero_weight_applied"] = (
+            scored_gdf[weight_cols].eq(0).any(axis=1)
+            | ((scored_gdf["score"] > 0) & (scored_gdf["score_enhanced"] == 0))
+        )
         scored_gdf["score_enhanced_raw"] = scored_gdf["score_enhanced"]
         # Each environmental weight is individually finite and >= 0 (enforced
         # client-side by validateEnvWeights.ts), but multiplying several very
@@ -516,6 +530,7 @@ async def run(params, progress_cb):
         "baseline_eval": baseline_eval,
         "enhanced_eval": enhanced_eval,
         "boundary_diagnostics": boundary_diagnostics,
+        "dem_summary": dem_summary,
         "baseline_geojson": baseline_gdf.to_json(),
         "enhanced_geojson": enhanced_gdf.to_json() if enhanced_gdf is not None else None,
     }
