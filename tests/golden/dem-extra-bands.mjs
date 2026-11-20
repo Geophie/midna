@@ -137,7 +137,7 @@ constant_raster("/below-plain.tif", -100.0)
 layer_with_lower = dict(
     type="dem", name="dem", path="/below-plain.tif",
     pianuraMin=0.0, collinaMin=250.0, montagnaMin=350.0,
-    lowWeight=0.4, midWeight=0.8, highWeight=0.0, nodataWeight=-1.0,
+    lowWeight=0.4, midWeight=0.8, highWeight=0.0, nodataWeight=0.07,
     lowerBands=[{"threshold": -200.0, "weight": 0.2}, {"threshold": -50.0, "weight": 0.3}],
 )
 out_lower = await pipeline.run(dict(pyparams_base, layers=[layer_with_lower]), no_cancel)
@@ -149,7 +149,7 @@ constant_raster("/above-mountain.tif", 900.0)
 layer_with_upper = dict(
     type="dem", name="dem", path="/above-mountain.tif",
     pianuraMin=0.0, collinaMin=250.0, montagnaMin=350.0,
-    lowWeight=0.4, midWeight=0.8, highWeight=0.0, nodataWeight=-1.0,
+    lowWeight=0.4, midWeight=0.8, highWeight=0.0, nodataWeight=0.07,
     upperBands=[{"threshold": 700.0, "weight": 0.2}, {"threshold": 1200.0, "weight": 0.1}],
 )
 out_upper = await pipeline.run(dict(pyparams_base, layers=[layer_with_upper]), no_cancel)

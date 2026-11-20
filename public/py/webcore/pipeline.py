@@ -3,6 +3,7 @@ import sys
 if "/" not in sys.path:
     sys.path.insert(0, "/")
 
+import math
 import zipfile
 
 import numpy as np
@@ -99,11 +100,46 @@ def _read_vector_file(path):
         return gpd.read_file(f"/vsizip/{path}/{shp_members[0]}")
 
 
+def _is_finite_number(v):
+    # bool is an int subclass: True must not pass as 1
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+
+
+def _validate_env_layers(layers):
+    """Python mirror of src/lib/validateEnvWeights.ts: same rules, same error
+    keys, so direct callers of run() get the checks the browser applies."""
+    for layer in layers:
+        is_dem = layer.get("type") == "dem"
+        bands = (list(layer.get("lowerBands", [])) + list(layer.get("upperBands", []))) if is_dem else []
+        thresholds = (
+            [layer.get(f) for f in ("pianuraMin", "collinaMin", "montagnaMin")] if is_dem else []
+        ) + [b.get("threshold") for b in bands]
+        weight_fields = (
+            ("lowWeight", "midWeight", "highWeight", "nodataWeight") if is_dem
+            else ("intersectWeight", "noIntersectWeight")
+        )
+        weight_values = [layer.get(f) for f in weight_fields] + [b.get("weight") for b in bands]
+        if not all(_is_finite_number(t) for t in thresholds) or not all(
+            _is_finite_number(w) and w >= 0 for w in weight_values
+        ):
+            raise ValueError("error_env_weight_invalid")
+        if is_dem:
+            seq = (
+                [b["threshold"] for b in layer.get("lowerBands", [])]
+                + [layer["pianuraMin"], layer["collinaMin"], layer["montagnaMin"]]
+                + [b["threshold"] for b in layer.get("upperBands", [])]
+            )
+            if any(a >= b for a, b in zip(seq, seq[1:])):
+                raise ValueError("error_env_threshold_order")
+
+
 async def run(params, progress_cb):
     """Cancellation is an expected outcome, not an error: a cancelled run
     returns {"status": "cancelled"} rather than raising, so callers don't
     have to distinguish "user clicked Stop" from a real failure via
     exception message sniffing."""
+
+    _validate_env_layers(params.get("layers", []))
 
     # Checkpoint-based, like the desktop app's _set_progress: cancellation is
     # only observed between stages, never mid-computation and never after the
@@ -229,7 +265,8 @@ async def run(params, progress_cb):
             dem_values = weights.computeDemCellMeans(scored_gdf, clipped_path)
             # Strict key access, not layer.get(k, default): the browser LayerSpec
             # always populates every environmental field (validated client-side
-            # before the run — see src/lib/validateEnvWeights.ts), so a missing
+            # before the run — see src/lib/validateEnvWeights.ts — and again by
+            # _validate_env_layers at the top of run()), so a missing
             # key here means broken parameter propagation and must fail loudly
             # rather than silently substituting a default the user never chose.
             # weights.py keeps its own defaults for direct/API callers.

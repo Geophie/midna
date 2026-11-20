@@ -8,6 +8,11 @@
 // fail the run explicitly (error_env_overflow) before normalization ever
 // gets a chance to silently zero the overflow out — while a very large but
 // still-finite product keeps running normally.
+//
+// Section I: the Python-side _validate_env_layers mirrors
+// src/lib/validateEnvWeights.ts, so invalid DEM thresholds/weights and
+// out-of-order threshold sequences fail with error_env_weight_invalid or
+// error_env_threshold_order when run() is called directly.
 
 import { loadPyodide } from "pyodide";
 import fs from "node:fs";
@@ -150,6 +155,30 @@ demo_gdf = gpd.GeoDataFrame({"score_enhanced": [1.0, np.inf, 2.0]})
 demo_normalized = normalize.normalizeScores(demo_gdf, col="score_enhanced")
 normalize_silently_zeroes_inf = bool(demo_normalized["score_enhanced"].iloc[1] == 0.0)
 
+# I: Python-side validation mirrors validateEnvWeights.ts. Each invalid variant
+# must fail with its error key; the returned message is None if run() succeeds.
+async def run_error(layers):
+    try:
+        await pipeline.run(dict(base, layers=layers), no_cancel)
+        return None
+    except Exception as e:
+        return str(e)
+
+weight_invalid_cases = {
+    "dem_nodata_negative": dict(dem, nodataWeight=-1.0),
+    "incl_intersect_inf": dict(incl, intersectWeight=float("inf")),
+    "incl_intersect_nan": dict(incl, intersectWeight=float("nan")),
+    "dem_lower_band_negative_weight": dict(dem, lowerBands=[{"threshold": -100.0, "weight": -0.2}]),
+    "dem_pianura_bool": dict(dem, pianuraMin=True),
+}
+threshold_order_cases = {
+    "dem_collina_equals_pianura": dict(dem, collinaMin=dem["pianuraMin"]),
+    "dem_lower_band_at_pianura": dict(dem, lowerBands=[{"threshold": dem["pianuraMin"], "weight": 0.2}]),
+    "dem_upper_band_at_montagna": dict(dem, upperBands=[{"threshold": dem["montagnaMin"], "weight": 0.2}]),
+}
+weight_invalid_messages = {name: await run_error([layer]) for name, layer in weight_invalid_cases.items()}
+threshold_order_messages = {name: await run_error([layer]) for name, layer in threshold_order_cases.items()}
+
 json.dumps({
     "raw_is_score_times_weights": raw_ok,
     "dem_weight_values": dem_vals,
@@ -167,6 +196,8 @@ json.dumps({
     "safe_raw_finite": safe_raw_finite,
     "safe_normalized_max": safe_normalized_max,
     "normalize_silently_zeroes_inf": normalize_silently_zeroes_inf,
+    "weight_invalid_messages": weight_invalid_messages,
+    "threshold_order_messages": threshold_order_messages,
 })
 `));
 
@@ -186,6 +217,14 @@ json.dumps({
     [result.safe_raw_finite, "a very large but still float64-safe weight product stays finite"],
     [result.safe_normalized_max === 100, `the safe large-weight run still normalizes to max 100 (got ${result.safe_normalized_max})`],
     [result.normalize_silently_zeroes_inf, "sanity: normalize.py's own finite-fallback would have silently zeroed the overflow — this is exactly what the pre-normalization guard prevents from being reached"],
+    ...Object.entries(result.weight_invalid_messages).map(([name, msg]) => [
+      typeof msg === "string" && msg.includes("error_env_weight_invalid"),
+      `I weight_invalid ${name}: message contains error_env_weight_invalid (got ${JSON.stringify(msg)})`,
+    ]),
+    ...Object.entries(result.threshold_order_messages).map(([name, msg]) => [
+      typeof msg === "string" && msg.includes("error_env_threshold_order"),
+      `I threshold_order ${name}: message contains error_env_threshold_order (got ${JSON.stringify(msg)})`,
+    ]),
   ];
 
   let ok = true;
