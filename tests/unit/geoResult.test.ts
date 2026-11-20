@@ -9,6 +9,7 @@ import {
   estimateBandLambda,
   isSurfaceFeature,
   isFeatureVisible,
+  parseGridFeatureCollection,
   type GridFeatureCollection,
 } from "@/lib/geoResult";
 
@@ -197,5 +198,22 @@ describe("computeLegendBands", () => {
 
   it("returns [] for an empty collection", () => {
     expect(computeLegendBands(fcOf([]), "score")).toEqual([]);
+  });
+});
+
+describe("parseGridFeatureCollection", () => {
+  it("maps bare Infinity/-Infinity/NaN tokens to null and leaves strings untouched", () => {
+    const raw = `{"type":"FeatureCollection","features":[{"type":"Feature","geometry":null,"properties":{"dem_mean": -Infinity,"effective_weight": Infinity,"score_raw": NaN,"score": 1.5,"label": "Infinity -Infinity NaN"}}]}`;
+    const props = parseGridFeatureCollection(raw).features[0].properties as unknown as Record<string, unknown>;
+    expect(props.dem_mean).toBeNull();
+    expect(props.effective_weight).toBeNull();
+    expect(props.score_raw).toBeNull();
+    expect(props.score).toBe(1.5);
+    expect(props.label).toBe("Infinity -Infinity NaN");
+  });
+
+  it("parses valid JSON without tokens exactly like JSON.parse", () => {
+    const valid = JSON.stringify({ type: "FeatureCollection", features: [{ type: "Feature", geometry: null, properties: { score: 2, label: "x" } }] });
+    expect(parseGridFeatureCollection(valid)).toEqual(JSON.parse(valid));
   });
 });

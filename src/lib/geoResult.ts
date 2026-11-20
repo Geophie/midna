@@ -247,8 +247,21 @@ export function computeLegendBands(
   return bands;
 }
 
+// String literals are matched first so tokens inside them are left untouched.
+const NON_FINITE_TOKEN = /"(?:[^"\\]|\\.)*"|-?Infinity|NaN/g;
+
+/** Python's json.dumps writes ±inf/NaN as bare tokens that JSON.parse
+ * rejects; map them to null, the same value pandas already uses for NaN. */
+export function sanitizeNonFiniteJson(json: string): string {
+  return json.replace(NON_FINITE_TOKEN, (m) => (m[0] === '"' ? m : "null"));
+}
+
 export function parseGridFeatureCollection(geoJson: string): GridFeatureCollection {
-  return JSON.parse(geoJson) as GridFeatureCollection;
+  try {
+    return JSON.parse(geoJson) as GridFeatureCollection;
+  } catch {
+    return JSON.parse(sanitizeNonFiniteJson(geoJson)) as GridFeatureCollection;
+  }
 }
 
 /** Min/max of a score field across all features — used to bound the threshold

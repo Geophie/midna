@@ -11,6 +11,9 @@
 // 4. _classifyDemStates: NaN (genuine NoData) and a finite elevation below
 //    the lowest configured threshold both still resolve to nodataWeight
 //    numerically, but must classify to different diagnostic states.
+// 5. Non-finite DEM pixels (+/-inf, undeclared NaN): dem_mean averages only
+//    finite pixels, and the raw enhanced_geojson string parses as strict JSON
+//    (no bare Infinity/-Infinity/NaN tokens that JSON.parse rejects).
 
 import { loadPyodide } from "pyodide";
 import fs from "node:fs";
@@ -173,6 +176,28 @@ backward_compat_ok = bool(
     and np.array_equal(frame_no_key["rank"].to_numpy(), frame_empty["rank"].to_numpy())
 )
 
+# --- 5. Non-finite DEM pixels: ±inf and undeclared NaN must not reach dem_mean ---
+# Four 2x2 blocks (one per grid cell): mixed inf/finite, both signs, all
+# non-finite, and an undeclared NaN among finite pixels.
+arr_nonfinite = np.full((4, 4), 100.0, dtype=np.float64)
+arr_nonfinite[0, 0] = np.inf
+arr_nonfinite[0, 3] = np.inf
+arr_nonfinite[1, 2] = -np.inf
+arr_nonfinite[2:4, 0:2] = [[np.inf, -np.inf], [np.nan, np.inf]]
+arr_nonfinite[3, 3] = np.nan
+with rasterio.open(
+    "/dem-nonfinite.tif", "w", driver="GTiff", height=4, width=4, count=1,
+    dtype="float64", crs="EPSG:4326",
+    transform=from_origin(minx, maxy, (maxx - minx) / 4, (maxy - miny) / 4),
+) as dst:
+    dst.write(arr_nonfinite, 1)
+layer_nonfinite = dict(
+    type="dem", name="dem", path="/dem-nonfinite.tif",
+    pianuraMin=0.0, collinaMin=250.0, montagnaMin=350.0,
+    lowWeight=0.4, midWeight=0.8, highWeight=0.0, nodataWeight=0.1,
+)
+out_nonfinite = await pipeline.run(dict(pyparams_base, layers=[layer_nonfinite]), no_cancel)
+
 json.dumps({
     "lower_e2e_weights": lower_e2e_weights,
     "upper_e2e_weights": upper_e2e_weights,
@@ -181,10 +206,24 @@ json.dumps({
     "diag_states_match_expected": states_match_expected,
     "diag_nodata_and_below_range_share_weight": nodata_and_below_range_share_weight,
     "diag_nodata_and_below_range_states_differ": nodata_and_below_range_states_differ,
+    "nonfinite_enhanced_geojson": out_nonfinite["enhanced_geojson"],
 })
 `));
 
   console.log(result);
+
+  // Parse the raw string on the JS side: strict JSON rejects bare Infinity/NaN.
+  const nonfiniteRaw = result.nonfinite_enhanced_geojson;
+  let nonfiniteParses = false;
+  let nonfiniteProps = [];
+  try {
+    nonfiniteProps = JSON.parse(nonfiniteRaw).features.map((f) => f.properties);
+    nonfiniteParses = true;
+  } catch {
+    // leave nonfiniteParses false: the check below reports it
+  }
+  const nonfiniteMixedCount = nonfiniteProps.filter((p) => p.dem_mean === 100 && p.w_0_dem === 0.4).length;
+  const nonfiniteNodataCount = nonfiniteProps.filter((p) => p.dem_mean === null && p.w_0_dem === 0.1).length;
 
   const checks = [
     [
@@ -210,6 +249,22 @@ json.dumps({
     [
       result.diag_nodata_and_below_range_states_differ,
       "...but NaN and a finite below-range value classify to different diagnostic states",
+    ],
+    [
+      typeof nonfiniteRaw === "string" && !/-?Infinity|NaN/.test(nonfiniteRaw),
+      "non-finite DEM run: raw enhanced_geojson has no bare Infinity/-Infinity/NaN token",
+    ],
+    [
+      nonfiniteParses,
+      "non-finite DEM run: raw enhanced_geojson parses with strict JSON.parse",
+    ],
+    [
+      nonfiniteMixedCount === 3,
+      `non-finite DEM run: 3 mixed cells average only finite pixels (dem_mean 100, w_0_dem 0.4) (got ${nonfiniteMixedCount})`,
+    ],
+    [
+      nonfiniteNodataCount === 1,
+      `non-finite DEM run: 1 cell with no finite pixel has dem_mean null, w_0_dem 0.1 (got ${nonfiniteNodataCount})`,
     ],
   ];
 

@@ -187,6 +187,10 @@ def computeDemCellMeans(gridGdf: gpd.GeoDataFrame, demPath: str) -> np.ndarray:
 
                 if src.nodata is not None:
                     values = values[values != src.nodata]
+                # ±inf would yield an inf mean that serializes as a bare
+                # Infinity token (invalid JSON); undeclared NaN would poison
+                # the whole cell. Keep finite pixels only.
+                values = values[np.isfinite(values)]
 
                 if len(values) == 0:
                     means.append(np.nan)

@@ -1,30 +1,14 @@
 import type { RunResult } from "@/lib/store";
+import { parseGridFeatureCollection, sanitizeNonFiniteJson } from "@/lib/geoResult";
 
 // Standard ESRI-style WGS84 WKT, the same convention GDAL/OGR/QGIS expect in
 // a .prj sidecar — no client-side pyproj needed for a fixed EPSG:4326 export.
 const WGS84_PRJ_WKT =
   'GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137.0,298.257223563]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]]';
 
-interface CellFeatureProps {
-  cell_id: number;
-  rank: number;
-  score: number;
-  score_raw?: number;
-  score_enhanced?: number;
-  score_enhanced_raw?: number;
-  effective_weight?: number;
-  zero_weight_applied?: boolean;
-  Longitude: number;
-  Latitude: number;
-}
-
-interface FeatureCollection {
-  features: Array<{ properties: CellFeatureProps }>;
-}
-
 export function buildCsvExport(result: RunResult): { csv: string; csvt: string; prj: string } {
   const geoJson = result.enhancedGeoJson ?? result.baselineGeoJson;
-  const fc = JSON.parse(geoJson) as FeatureCollection;
+  const fc = parseGridFeatureCollection(geoJson);
   const rows = fc.features.map((f) => f.properties).sort((a, b) => a.rank - b.rank);
   const hasEnhanced = rows.some((r) => r.score_enhanced !== undefined);
 
@@ -79,5 +63,5 @@ export function exportCsv(result: RunResult, baseName = "rossmo_ranking") {
 }
 
 export function exportGeoJson(geoJson: string, fileName: string) {
-  downloadText(fileName, geoJson, "application/geo+json");
+  downloadText(fileName, sanitizeNonFiniteJson(geoJson), "application/geo+json");
 }
